@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, ShieldAlert } from 'lucide-react';
-import { ALLOWED_EMAILS, persistAdminSession } from './adminSession';
+import { ALLOWED_EMAILS, parseAdminSession, persistAdminSession, readAdminSessionRaw } from './adminSession';
 import { supabase } from '../lib/supabase/client';
 
 export function AdminLogin() {
@@ -16,12 +16,16 @@ export function AdminLogin() {
   const honeypotRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (parseAdminSession(readAdminSessionRaw())) {
+      navigate('/admin/manish/nine-heaven/access-voidsoul/dashboard', { replace: true });
+      return;
+    }
     console.warn(
       '%c⚠️ STOP!',
       'color: red; font-size: 30px; font-weight: bold'
     );
     console.warn('This is a restricted admin panel. Unauthorized access is logged.');
-  }, []);
+  }, [navigate]);
 
   const handleEmailBlur = () => {
     if (email) {
@@ -65,6 +69,9 @@ export function AdminLogin() {
     setLoading(true);
 
     try {
+      if (!window.crypto?.subtle) {
+        throw new Error('Secure admin login requires HTTPS and browser crypto support.');
+      }
       const pwdHash = await hashPassword(password);
 
       const { data, error: fnError } = await supabase.functions.invoke('admin-auth', {

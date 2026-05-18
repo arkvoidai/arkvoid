@@ -190,7 +190,7 @@ export function Overview() {
   useEffect(() => {
     if (!user) return;
 
-    if (user && user.user_metadata?.onboarding_complete !== true && user.user_metadata?.first_login_complete !== true) {
+    if (user && (user.user_metadata?.onboarding_complete !== true || user.user_metadata?.first_login_complete !== true)) {
        setShowOnboarding(true);
     } else {
        setShowOnboarding(false);
@@ -573,7 +573,7 @@ export function Overview() {
                         <div className={`w-2 h-2 rounded-full ${agent.status === 'active' ? 'bg-[var(--status-success)]' : 'bg-[var(--text-tertiary)]'}`} />
                         <div>
                            <div className="text-[13px] font-medium text-[var(--text-primary)]">{agent.name}</div>
-                           <div className="text-[11px] text-[var(--text-secondary)] capitalize">{agent.type.replace('_', ' ')}</div>
+                           <div className="text-[11px] text-[var(--text-secondary)] capitalize">{(agent.agent_type || agent.type || 'custom').replace('_', ' ')}</div>
                         </div>
                      </div>
                      <div className={`text-[11px] font-mono font-medium px-2 py-0.5 rounded-[4px] ${agent.risk_score > 70 ? 'bg-[var(--status-danger-dim)] text-[var(--status-danger)]' : agent.risk_score > 30 ? 'bg-[var(--status-warning-dim)] text-[var(--status-warning)]' : 'bg-[var(--status-success-dim)] text-[var(--status-success)]'}`}>

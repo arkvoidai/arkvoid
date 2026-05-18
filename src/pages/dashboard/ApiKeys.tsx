@@ -10,10 +10,12 @@ import { Modal } from '@/src/components/ui/modal';
 import { formatDistanceToNow } from 'date-fns';
 import { escapeHtml, escapeRegExp, sanitizeHtml } from '@/src/lib/sanitize';
 import { createApiKeyForUser } from '@/src/lib/apiKeys';
+import { useToast } from '@/src/components/ui/toast';
 
 export function ApiKeys() {
   const { user, isGuest } = useAuth();
   const { showPremiumModal } = usePremiumGate();
+  const toast = useToast();
   const [keys, setKeys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -83,7 +85,7 @@ export function ApiKeys() {
       setRevokingId(null);
     } catch (err) {
       if (window.location.hostname === 'localhost') console.error(err);
-      alert('Failed to revoke API key');
+      toast.error('Failed to revoke API key', err instanceof Error ? err.message : 'Please retry.');
     }
   };
 
@@ -107,7 +109,7 @@ export function ApiKeys() {
       setNewKeyName('');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to generate key';
-      alert(message);
+      toast.error('Failed to generate API key', message);
     } finally {
       setGenerating(false);
     }

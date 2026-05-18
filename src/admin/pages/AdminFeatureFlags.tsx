@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/src/lib/supabase/client';
 import { Settings2, RefreshCcw, Users, Activity } from 'lucide-react';
+import { getAdminEmail } from '../adminSession';
 
 export function AdminFeatureFlags() {
   const [flags, setFlags] = useState<any[]>([]);
@@ -23,8 +24,7 @@ export function AdminFeatureFlags() {
   }, []);
 
   const toggleFlag = async (id: string, current: boolean) => {
-    const sessionRaw = sessionStorage.getItem('adminSession');
-    const adminEmail = sessionRaw ? JSON.parse(sessionRaw).email : 'admin@arkvoid.com';
+    const adminEmail = getAdminEmail();
     
     // Optimistic update
     setFlags(flags.map(f => f.id === id ? { ...f, is_enabled: !current } : f));

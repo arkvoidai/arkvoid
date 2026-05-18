@@ -4,9 +4,10 @@ import { Button } from '@/src/components/ui/button';
 import { Hexagon, Shield, Activity, Brain, CheckCircle, Copy } from 'lucide-react';
 import { supabase } from '@/src/lib/supabase/client';
 import { createApiKeyForUser } from '@/src/lib/apiKeys';
-import { createSlug } from '@/src/lib/slug';
 import { useAuth } from '@/src/hooks/useAuth';
 import { Logo } from '@/src/components/shared/logo';
+import { createAgentForUser } from '@/src/lib/agents';
+import { toSafeErrorMessage } from '@/src/lib/async';
 
 export function OnboardingModal({ isOpen, onClose, userName }: { isOpen: boolean; onClose: () => void; userName: string }) {
   const [step, setStep] = useState(1);
@@ -25,28 +26,22 @@ export function OnboardingModal({ isOpen, onClose, userName }: { isOpen: boolean
     setErrorMsg('');
     setLoading(true);
     try {
-      const { data: profile } = await supabase.from('user_profiles').select('org_id').eq('id', uid).single();
-      const orgId = profile?.org_id;
-
-      const slug = `${createSlug(agentName)}-${Math.random().toString(36).slice(2, 6)}`;
-      const { error } = await supabase.from('agents').insert({
-        user_id: uid,
-        created_by: uid,
-        org_id: orgId,
+      if (!uid) throw new Error('You must be signed in to create an agent.');
+      await createAgentForUser({
+        userId: uid,
         name: agentName,
-        slug,
-        agent_type: agentType,
+        agentType,
         description: agentDesc || null,
-        status: 'active'
+        status: 'active',
+        metadata: { registration_source: 'onboarding_modal' },
       });
-      if (error) throw error;
       setStep(3);
     } catch (e: any) {
       if (window.location.hostname === 'localhost') console.error('Failed to register agent', e);
       if (e.message?.includes('row-level security')) {
         setErrorMsg('Database error: RLS policy blocked the insert. Please run the provided SQL fixes.');
       } else {
-        setErrorMsg(e.message || 'Failed to create agent');
+        setErrorMsg(toSafeErrorMessage(e, 'Failed to create agent. Please retry.'));
       }
     } finally {
       setLoading(false);
@@ -84,7 +79,7 @@ export function OnboardingModal({ isOpen, onClose, userName }: { isOpen: boolean
 
   const markComplete = async () => {
     if (uid) {
-      await supabase.auth.updateUser({ data: { onboarding_complete: true, first_login_complete: true } });
+      await supabase.auth.updateUser({ data: { onboarding_complete: true, first_login_complete: true, onboarding_role: agentType || 'custom' } });
     }
     onClose();
   };
@@ -194,7 +189,7 @@ export function OnboardingModal({ isOpen, onClose, userName }: { isOpen: boolean
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <Button onClick={handleRegisterAgent} disabled={!agentName || loading} loading={loading}>
                 Register Agent
               </Button>

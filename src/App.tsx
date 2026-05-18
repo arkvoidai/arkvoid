@@ -50,6 +50,7 @@ import { PremiumGateProvider } from './hooks/usePremiumGate';
 import { FeatureFlagProvider } from './hooks/useFeatureFlags';
 import { ErrorTracker } from './hooks/ErrorTracker';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToastProvider } from './components/ui/toast';
 
 import { AdminLogin } from './admin/AdminLogin';
 import { AdminLayout } from './admin/AdminLayout';
@@ -147,6 +148,7 @@ function App() {
         <AuthProvider>
           <ErrorTracker />
           <FeatureFlagProvider>
+          <ToastProvider>
           <PremiumGateProvider>
             <GlobalGuestModal />
             <ErrorBoundary>
@@ -231,6 +233,7 @@ function App() {
       </Suspense>
       </ErrorBoundary>
       </PremiumGateProvider>
+      </ToastProvider>
       </FeatureFlagProvider>
       </AuthProvider>
     </BrowserRouter>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/src/lib/supabase/client';
 import { Rocket, ExternalLink, Activity, Github, Megaphone, Plus, Trash2 } from 'lucide-react';
+import { getAdminEmail } from '../adminSession';
 
 export function AdminDeployments() {
   const [deployments, setDeployments] = useState<any[]>([]);
@@ -55,8 +56,7 @@ export function AdminDeployments() {
   const createAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const sessionRaw = sessionStorage.getItem('adminSession');
-      const adminEmail = sessionRaw ? JSON.parse(sessionRaw).email : 'admin@arkvoid.com';
+      const adminEmail = getAdminEmail();
       await supabase.from('announcements').insert({
         title: annTitle,
         message: annMsg,

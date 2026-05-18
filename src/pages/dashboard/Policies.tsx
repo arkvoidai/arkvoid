@@ -5,10 +5,12 @@ import { useAuth } from '@/src/hooks/useAuth';
 import { usePremiumGate } from '@/src/hooks/usePremiumGate';
 import { Button } from '@/src/components/ui/button';
 import { Modal } from '@/src/components/ui/modal';
+import { useToast } from '@/src/components/ui/toast';
 
 export function Policies() {
   const { user, isGuest } = useAuth();
   const { showPremiumModal } = usePremiumGate();
+  const toast = useToast();
   const [policies, setPolicies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInfo, setShowInfo] = useState(() => localStorage.getItem('arkvoid_hide_policy_info') !== 'true');
@@ -109,8 +111,8 @@ export function Policies() {
       if (error) throw error;
       setPolicies(policies.map(p => p.id === id ? { ...p, is_active: !currentStatus } : p));
     } catch (err) {
-      console.error(err);
-      alert('Failed to toggle policy');
+      if (window.location.hostname === 'localhost') console.error(err);
+      toast.error('Failed to toggle policy', err instanceof Error ? err.message : 'Please retry.');
     }
   };
 
@@ -146,8 +148,8 @@ export function Policies() {
       }
       setIsModalOpen(false);
     } catch (err) {
-      console.error(err);
-      alert('Failed to save policy');
+      if (window.location.hostname === 'localhost') console.error(err);
+      toast.error('Failed to save policy', err instanceof Error ? err.message : 'Please retry.');
     }
   };
 

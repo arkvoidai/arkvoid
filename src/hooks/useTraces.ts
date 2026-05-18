@@ -25,6 +25,7 @@ export function useTraces(agentId?: string) {
           id,
           trace_id,
           agent_id,
+          org_id,
           action_type,
           risk_score,
           latency_ms,
@@ -32,6 +33,7 @@ export function useTraces(agentId?: string) {
           output_hash,
           started_at,
           status,
+          metadata,
           agents:agent_id (name, slug)
         `)
         .eq('user_id', user.id)
@@ -73,7 +75,7 @@ export function useTraces(agentId?: string) {
       setTraces(mappedData);
       setError(null);
     } catch (err: any) {
-      console.error('Error fetching traces:', err);
+      if (window.location.hostname === 'localhost') console.error('Error fetching traces:', err);
       setError(err);
     } finally {
       setLoading(false);
@@ -144,6 +146,7 @@ export function useTrace(id: string | undefined) {
                 id,
                 trace_id,
                 agent_id,
+                org_id,
                 action_type,
                 risk_score,
                 latency_ms,
@@ -151,6 +154,7 @@ export function useTrace(id: string | undefined) {
                 output_hash,
                 started_at,
                 status,
+                metadata,
                 agents:agent_id (name, slug)
             `)
             .eq('id', id)

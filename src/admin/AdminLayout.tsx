@@ -5,7 +5,7 @@ import {
   GitMerge, Key, DollarSign, Receipt, Briefcase, CloudRain, AlertTriangle, 
   ToggleLeft, Settings, Search, Bell, ChevronLeft, ChevronRight, LogOut, Lock
 } from 'lucide-react';
-import { clearAdminSession, parseAdminSession } from './adminSession';
+import { clearAdminSession, parseAdminSession, readAdminSessionRaw } from './adminSession';
 
 const ADMIN_NAVIGATION = [
   {
@@ -61,7 +61,7 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const session = parseAdminSession(sessionStorage.getItem('adminSession'));
+  const session = parseAdminSession(readAdminSessionRaw());
   const adminEmail = session?.email || 'admin@arkvoid.com';
   const adminInitials = adminEmail.substring(0, 2).toUpperCase();
 
@@ -263,10 +263,12 @@ export function AdminLayout() {
         </header>
 
         {/* PAGE CONTENT */}
-        <main className="flex-1 overflow-y-auto bg-[#080808] p-6 relative">
-          <Suspense fallback={<AdminPageSkeleton />}>
-            <Outlet />
-          </Suspense>
+        <main className="flex-1 overflow-y-auto bg-[#080808] p-4 sm:p-6 relative">
+          <AdminRuntimeErrorBoundary>
+            <Suspense fallback={<AdminPageSkeleton />}>
+              <Outlet />
+            </Suspense>
+          </AdminRuntimeErrorBoundary>
         </main>
         
       </div>
@@ -275,6 +277,37 @@ export function AdminLayout() {
       <ChangePasswordModal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} />
     </div>
   );
+}
+
+class AdminRuntimeErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('Admin route crashed', error);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-6 text-red-100">
+          <h2 className="mb-2 text-lg font-semibold text-white">Admin page failed to load</h2>
+          <p className="mb-4 text-sm text-red-200">{this.state.error.message || 'A runtime error occurred while rendering this admin route.'}</p>
+          <button
+            type="button"
+            onClick={() => this.setState({ error: null })}
+            className="rounded-md bg-[#E8D5B0] px-4 py-2 text-sm font-semibold text-black"
+          >
+            Try again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 function AdminPageSkeleton() {

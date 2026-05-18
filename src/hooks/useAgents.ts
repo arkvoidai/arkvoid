@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/src/lib/supabase/client';
 import { useAuth } from './useAuth';
 import { getCached, setCache } from '@/src/lib/cache';
+import { createAgentForUser } from '@/src/lib/agents';
 
 export function useAgents() {
   const { user } = useAuth();
@@ -31,7 +32,7 @@ export function useAgents() {
       setAgents(data || []);
       setError(null);
     } catch (err: any) {
-      console.error('Error fetching agents:', err);
+      if (window.location.hostname === 'localhost') console.error('Error fetching agents:', err);
       setError(err);
     } finally {
       setLoading(false);
@@ -51,7 +52,7 @@ export function useAgents() {
           if ((payload.new as { user_id?: string }).user_id && (payload.new as { user_id?: string }).user_id !== user.id) return;
           if (payload.eventType === 'DELETE' && (payload.old as { user_id?: string }).user_id && (payload.old as { user_id?: string }).user_id !== user.id) return;
           if (payload.eventType === 'INSERT') {
-            setAgents(prev => [payload.new, ...prev]);
+            setAgents(prev => prev.some(a => a.id === payload.new.id) ? prev : [payload.new, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
             setAgents(prev => prev.map(a => a.id === payload.new.id ? payload.new : a));
           } else if (payload.eventType === 'DELETE') {
@@ -78,18 +79,16 @@ export function useAgents() {
 
   const createAgent = async (newAgent: any) => {
     if (!user) throw new Error('Not logged in');
-    
-    // Fetch org_id
-    const { data: profile } = await supabase.from('user_profiles').select('org_id').eq('id', user.id).single();
-
-    const { data, error } = await supabase.from('agents').insert({
-      ...newAgent,
-      user_id: user.id,
-      created_by: user.id,
-      org_id: profile?.org_id
-    }).select().single();
-
-    if (error) throw error;
+    const data = await createAgentForUser({
+      userId: user.id,
+      name: newAgent.name,
+      slug: newAgent.slug,
+      agentType: newAgent.agent_type || newAgent.agentType || newAgent.type,
+      description: newAgent.description,
+      metadata: newAgent.metadata,
+      status: newAgent.status,
+    });
+    await fetchAgents();
     return data;
   };
 

@@ -4,8 +4,8 @@ import { useAuth } from '@/src/hooks/useAuth';
 import { Bot, FileText, MessageSquare, Landmark, Activity, Building2, CheckCircle2, AlertCircle, ShieldAlert, Users, Code, LineChart, Briefcase } from 'lucide-react';
 import { Logo } from '@/src/components/shared/logo';
 import { useNavigate } from 'react-router-dom';
-import { createSlug } from '@/src/lib/slug';
 import { toSafeErrorMessage } from '@/src/lib/async';
+import { createAgentForUser } from '@/src/lib/agents';
 
 export function WelcomeFlow() {
   const { user } = useAuth();
@@ -56,29 +56,21 @@ export function WelcomeFlow() {
           break;
       }
 
-      const slug = `${createSlug(agentName)}-${Math.random().toString(36).substring(2, 6)}`;
-      const { data: profile } = await supabase.from('user_profiles').select('org_id').eq('id', user.id).maybeSingle();
-
-      const { error: agentError } = await supabase.from('agents').insert({
-        user_id: user.id,
-        created_by: user.id,
-        org_id: profile?.org_id || null,
+      await createAgentForUser({
+        userId: user.id,
         name: agentName,
-        slug,
-        agent_type: agentType,
+        agentType,
         description: "Auto-created from onboarding",
-        status: 'active'
+        status: 'active',
+        metadata: { registration_source: 'welcome_flow', use_case: primaryCase },
       });
-
-      if (agentError && !agentError.message?.toLowerCase().includes('duplicate')) {
-        throw agentError;
-      }
 
       const { error: metadataError } = await supabase.auth.updateUser({
         data: {
           use_case: safeUseCases,
           main_worry: mainWorry || 'visibility',
           team_type: teamType || 'developer',
+          onboarding_role: teamType || 'developer',
           first_login_complete: true,
           onboarding_complete: true,
           tour_complete: false
@@ -89,24 +81,13 @@ export function WelcomeFlow() {
 
       navigate('/dashboard/overview', { replace: true });
     } catch (e) {
-      const message = toSafeErrorMessage(e, 'We could not finish setup. You can retry or continue to the dashboard.');
+      const message = toSafeErrorMessage(e, 'We could not finish setup. Please retry after checking your connection.');
       setError(message);
       void supabase.from('error_logs').insert({
         error_message: `onboarding_failed: ${message}`,
         page_url: window.location.href,
         metadata: { user_id: user.id, use_cases: useCases, main_worry: mainWorry, team_type: teamType }
       });
-      setCreating(false);
-    }
-  };
-
-  const recoverAndContinue = async () => {
-    if (!user) return;
-    setCreating(true);
-    try {
-      await supabase.auth.updateUser({ data: { first_login_complete: true, onboarding_complete: true, tour_complete: false } });
-      navigate('/dashboard/overview', { replace: true });
-    } finally {
       setCreating(false);
     }
   };
@@ -134,16 +115,16 @@ export function WelcomeFlow() {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#050505] flex items-center justify-center overflow-y-auto">
-      <div className="w-full max-w-3xl p-6 md:p-12 animate-in fade-in zoom-in-95 duration-500">
-        <div className="flex justify-center mb-12">
+    <div className="fixed inset-0 z-50 bg-[#050505] flex items-start sm:items-center justify-center overflow-y-auto px-3 py-6 sm:p-0">
+      <div className="w-full max-w-3xl p-4 sm:p-6 md:p-12 animate-in fade-in zoom-in-95 duration-500">
+        <div className="flex justify-center mb-6 sm:mb-12">
           <Logo />
         </div>
 
         {step === 1 && (
-          <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
+          <div className="space-y-6 sm:space-y-8 animate-in slide-in-from-right-8 duration-500">
             <div className="text-center">
-              <h1 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-white to-white/60">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-white to-white/60">
                 Welcome to ARKVOID. Let's set you up.
               </h1>
               <p className="text-[var(--text-secondary)] mt-3 text-lg">Tell us what you're working with.</p>
@@ -183,9 +164,9 @@ export function WelcomeFlow() {
         )}
 
         {step === 2 && (
-          <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
+          <div className="space-y-6 sm:space-y-8 animate-in slide-in-from-right-8 duration-500">
             <div className="text-center">
-              <h1 className="text-3xl md:text-4xl font-bold text-white">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
                 What's your biggest worry?
               </h1>
               <p className="text-[var(--text-secondary)] mt-3 text-lg">We'll focus on what matters most to you.</p>
@@ -215,9 +196,9 @@ export function WelcomeFlow() {
         )}
 
         {step === 3 && (
-          <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
+          <div className="space-y-6 sm:space-y-8 animate-in slide-in-from-right-8 duration-500">
             <div className="text-center">
-              <h1 className="text-3xl md:text-4xl font-bold text-white">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
                 How technical is your team?
               </h1>
               <p className="text-[var(--text-secondary)] mt-3 text-lg">We'll adjust the experience for you.</p>
@@ -262,9 +243,6 @@ export function WelcomeFlow() {
               {error && (
                 <div className="mt-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
                   <p>{error}</p>
-                  <button type="button" onClick={recoverAndContinue} className="mt-2 text-[var(--accent-amber)] hover:underline">
-                    Continue with manual setup
-                  </button>
                 </div>
               )}
             </div>
