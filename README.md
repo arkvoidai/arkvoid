@@ -6,7 +6,7 @@ Modern AI infrastructure for monitoring, tracing, and securing autonomous AI sys
 
 ---
 
-![ARKVOID OG Image](./og-image.png)
+![ARKVOID OG Image](./public/og-image.png)
 
 ---
 
