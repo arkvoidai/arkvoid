@@ -44,7 +44,7 @@ export function Signup() {
     setError('');
 
     try {
-      await signInWithOtp(email, { data: { full_name: fullName } });
+      await signInWithOtp(email, { data: { full_name: fullName.trim() }, emailRedirectTo: `${window.location.origin}${returnUrl}` });
       navigate(`/auth/verify?email=${encodeURIComponent(email)}&returnUrl=${encodeURIComponent(returnUrl)}`);
     } catch (err: any) {
       if (err.message?.toLowerCase().includes('rate limit') || err.message?.toLowerCase().includes('too many')) {

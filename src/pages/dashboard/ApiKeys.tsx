@@ -8,6 +8,8 @@ import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Modal } from '@/src/components/ui/modal';
 import { formatDistanceToNow } from 'date-fns';
+import { escapeHtml, escapeRegExp, sanitizeHtml } from '@/src/lib/sanitize';
+import { createApiKeyForUser } from '@/src/lib/apiKeys';
 
 export function ApiKeys() {
   const { user, isGuest } = useAuth();
@@ -54,7 +56,7 @@ export function ApiKeys() {
     const { data, error } = await supabase
       .from('api_keys')
       .select('id, name, key_prefix, scopes, is_active, created_at, last_used_at')
-      .eq('user_id', user.id)
+      .eq('created_by', user.id)
       .eq('is_active', true)
       .order('created_at', { ascending: false });
     
@@ -68,8 +70,6 @@ export function ApiKeys() {
   };
 
   const handleRevoke = async (id: string) => {
-    if (revokingId === id) return; // already confirming? wait, inline confirm logic is handled by setting revokingId
-    
     if (!revokingId || revokingId !== id) {
        setRevokingId(id);
        return;
@@ -77,53 +77,47 @@ export function ApiKeys() {
     
     // Confirmed
     try {
-      const { error } = await supabase.from('api_keys').update({ is_active: false }).eq('id', id);
+      const { error } = await supabase.from('api_keys').update({ is_active: false, revoked_at: new Date().toISOString() }).eq('id', id).eq('created_by', user?.id ?? '');
       if (error) throw error;
       setKeys(keys.filter(k => k.id !== id));
       setRevokingId(null);
     } catch (err) {
-      console.error(err);
+      if (window.location.hostname === 'localhost') console.error(err);
       alert('Failed to revoke API key');
     }
   };
 
   const handleGenerateKey = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!user || isGuest || !newKeyName.trim()) return;
+    if (generating || !user || isGuest || !newKeyName.trim()) return;
 
     setGenerating(true);
     try {
-      const bytes = new Uint8Array(24);
-      window.crypto.getRandomValues(bytes);
-      const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-      const fullKey = 'ARK_' + hex;
-      const keyPrefix = fullKey.slice(0, 12) + '...';
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('org_id')
+        .eq('id', user.id)
+        .maybeSingle();
 
-      const msgBuffer = new TextEncoder().encode(fullKey);
-      const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const keyHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      const result = await createApiKeyForUser(user.id, newKeyName, profile?.org_id ?? null);
+      if (result.error || !result.data) throw new Error(result.error || 'Failed to generate API key.');
 
-      const newRow = {
-        user_id: user.id,
-        name: newKeyName.trim(),
-        key_prefix: keyPrefix,
-        key_hash: keyHash,
-        scopes: ['traces:write', 'agents:read']
-      };
-
-      const { data, error } = await supabase.from('api_keys').insert(newRow).select().single();
-      if (error) throw error;
-
-      setKeys([data, ...keys]);
-      setNewKeyFull(fullKey);
+      setKeys(prev => [result.data.row, ...prev]);
+      setNewKeyFull(result.data.fullKey);
       setNewKeyName('');
     } catch (err) {
-      console.error('Failed to generate key', err);
-      alert('Failed to generate key');
+      const message = err instanceof Error ? err.message : 'Failed to generate key';
+      alert(message);
     } finally {
       setGenerating(false);
     }
+  };
+
+  const closeGenerateModal = () => {
+    setIsGenerateModalOpen(false);
+    setNewKeyFull(null);
+    setNewKeyName('');
+    setCopied(false);
   };
 
   const copyToClipboard = () => {
@@ -139,14 +133,18 @@ export function ApiKeys() {
     const keyHint = keys.length > 0 ? keys[0].key_prefix : defaultPlaceholder;
 
     const highlight = (code: string) => {
+      const safeCode = escapeHtml(code);
+      const safeKeyHint = escapeRegExp(escapeHtml(keyHint));
+      const safeDefaultPlaceholder = escapeRegExp(escapeHtml(defaultPlaceholder));
+
       return {
-        __html: code
-          .replace(/"([^"]+)":/g, '<span class="text-[#3b82f6]">"$1"</span>:')
-          .replace(new RegExp(`(${keyHint}|${defaultPlaceholder})`, 'g'), '<span class="text-[var(--accent-amber)] bg-[var(--accent-amber-dim)] px-1">$1</span>')
-          .replace(/'https:\/\/[^']+'/g, match => `<span class="text-green-500">${match}</span>`)
-          .replace(/"https:\/\/[^"]+"/g, match => `<span class="text-green-500">${match}</span>`)
-          .replace(/# (.+)/g, match => `<span class="text-[var(--text-tertiary)]">${match}</span>`)
-          .replace(/\/\/ (.+)/g, match => `<span class="text-[var(--text-tertiary)]">${match}</span>`)
+        __html: sanitizeHtml(safeCode
+          .replace(/&quot;([^&]+)&quot;:/g, '<span class="text-[#3b82f6]">&quot;$1&quot;</span>:')
+          .replace(new RegExp(`(${safeKeyHint}|${safeDefaultPlaceholder})`, 'g'), '<span class="text-[var(--accent-amber)] bg-[var(--accent-amber-dim)] px-1">$1</span>')
+          .replace(/&#39;https:\/\/[^&]+&#39;/g, match => `<span class="text-green-500">${match}</span>`)
+          .replace(/&quot;https:\/\/[^&]+&quot;/g, match => `<span class="text-green-500">${match}</span>`)
+          .replace(/# ([^\n]+)/g, match => `<span class="text-[var(--text-tertiary)]">${match}</span>`)
+          .replace(/\/\/ ([^\n]+)/g, match => `<span class="text-[var(--text-tertiary)]">${match}</span>`))
       };
     };
 
@@ -517,25 +515,18 @@ jobs:
 
       <Modal 
         open={isGenerateModalOpen} 
-        onClose={() => {
-          setIsGenerateModalOpen(false);
-          setNewKeyFull(null);
-          setNewKeyName('');
-        }}
+        onClose={closeGenerateModal}
         title="Generate API Key"
         footer={
           !newKeyFull ? (
             <>
-              <Button variant="ghost" onClick={() => setIsGenerateModalOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={closeGenerateModal}>Cancel</Button>
               <Button variant="primary" onClick={handleGenerateKey} disabled={!newKeyName.trim() || generating}>
                 {generating ? 'Generating...' : 'Generate New Key'}
               </Button>
             </>
           ) : (
-            <Button variant="primary" onClick={() => {
-              setIsGenerateModalOpen(false);
-              setNewKeyFull(null);
-            }}>Done</Button>
+            <Button variant="primary" onClick={closeGenerateModal}>Done</Button>
           )
         }
       >

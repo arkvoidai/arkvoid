@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { sanitizeHtml } from '@/src/lib/sanitize';
 import { supabase } from '@/src/lib/supabase/client';
 import { Button } from '@/src/components/ui/button';
 import { Modal } from '@/src/components/ui/modal';
@@ -168,7 +169,7 @@ export function ReportGeneratorModal({ open, onClose, reportType }: ReportGenera
                  </div>
                </div>
 
-               <div className="prose prose-sm max-w-none text-black prose-headings:text-black prose-a:text-blue-600" dangerouslySetInnerHTML={{ __html: reportResult }} />
+               <div className="prose prose-sm max-w-none text-black prose-headings:text-black prose-a:text-blue-600" dangerouslySetInnerHTML={{ __html: sanitizeHtml(reportResult) }} />
                
                <div className="mt-16 pt-8 border-t border-gray-300 text-center text-xs text-gray-500 print:mt-12 print:pt-4">
                  Verified by ARKVOID Cryptographic Audit Trail<br />

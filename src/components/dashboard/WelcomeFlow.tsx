@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '@/src/lib/supabase/client';
 import { useAuth } from '@/src/hooks/useAuth';
 import { Bot, FileText, MessageSquare, Landmark, Activity, Building2, CheckCircle2, AlertCircle, ShieldAlert, Users, Code, LineChart, Briefcase } from 'lucide-react';
 import { Logo } from '@/src/components/shared/logo';
 import { useNavigate } from 'react-router-dom';
+import { createSlug } from '@/src/lib/slug';
+import { toSafeErrorMessage } from '@/src/lib/async';
 
 export function WelcomeFlow() {
   const { user } = useAuth();
@@ -13,36 +15,26 @@ export function WelcomeFlow() {
   const [mainWorry, setMainWorry] = useState<string | null>(null);
   const [teamType, setTeamType] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
 
   const toggleUseCase = (id: string) => {
     setUseCases(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
   const handleComplete = async () => {
-    if (!user) return;
+    if (!user || creating) return;
     setCreating(true);
+    setError('');
 
     try {
-      // 1. Update user metadata
-      await supabase.auth.updateUser({
-        data: {
-          use_case: useCases,
-          main_worry: mainWorry,
-          team_type: teamType,
-          first_login_complete: true,
-          tour_complete: false // ensure tour is ready
-        }
-      });
-
-      // 2. Determine agent defaults based on first use_case
-      const primaryCase = useCases[0] || 'custom';
+      const safeUseCases = useCases.length > 0 ? useCases : ['agents'];
+      const primaryCase = safeUseCases[0];
       let agentName = "My AI Agent";
       let agentType = "custom";
 
       switch (primaryCase) {
         case 'documents':
           agentName = "Document Processor";
-          agentType = "custom";
           break;
         case 'chatbot':
           agentName = "Customer Chatbot";
@@ -54,25 +46,21 @@ export function WelcomeFlow() {
           break;
         case 'healthcare':
           agentName = "Healthcare AI";
-          agentType = "custom";
           break;
         case 'enterprise':
           agentName = "Enterprise AI Agent";
-          agentType = "custom";
           break;
         case 'agents':
         default:
           agentName = "My AI Agent";
-          agentType = "custom";
           break;
       }
 
-      const slug = agentName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 6);
+      const slug = `${createSlug(agentName)}-${Math.random().toString(36).substring(2, 6)}`;
+      const { data: profile } = await supabase.from('user_profiles').select('org_id').eq('id', user.id).maybeSingle();
 
-      const { data: profile } = await supabase.from('user_profiles').select('org_id').eq('id', user.id).single();
-
-      // 3. Auto-create first agent
-      await supabase.from('agents').insert({
+      const { error: agentError } = await supabase.from('agents').insert({
+        user_id: user.id,
         created_by: user.id,
         org_id: profile?.org_id || null,
         name: agentName,
@@ -82,10 +70,43 @@ export function WelcomeFlow() {
         status: 'active'
       });
 
-      // Reload window to refetch user context or navigate to overview
-      window.location.href = '/dashboard/overview';
+      if (agentError && !agentError.message?.toLowerCase().includes('duplicate')) {
+        throw agentError;
+      }
+
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: {
+          use_case: safeUseCases,
+          main_worry: mainWorry || 'visibility',
+          team_type: teamType || 'developer',
+          first_login_complete: true,
+          onboarding_complete: true,
+          tour_complete: false
+        }
+      });
+
+      if (metadataError) throw metadataError;
+
+      navigate('/dashboard/overview', { replace: true });
     } catch (e) {
-      console.error("Failed to complete setup:", e);
+      const message = toSafeErrorMessage(e, 'We could not finish setup. You can retry or continue to the dashboard.');
+      setError(message);
+      void supabase.from('error_logs').insert({
+        error_message: `onboarding_failed: ${message}`,
+        page_url: window.location.href,
+        metadata: { user_id: user.id, use_cases: useCases, main_worry: mainWorry, team_type: teamType }
+      });
+      setCreating(false);
+    }
+  };
+
+  const recoverAndContinue = async () => {
+    if (!user) return;
+    setCreating(true);
+    try {
+      await supabase.auth.updateUser({ data: { first_login_complete: true, onboarding_complete: true, tour_complete: false } });
+      navigate('/dashboard/overview', { replace: true });
+    } finally {
       setCreating(false);
     }
   };
@@ -238,6 +259,14 @@ export function WelcomeFlow() {
                   <>Set Up My Workspace &rarr;</>
                 )}
               </button>
+              {error && (
+                <div className="mt-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
+                  <p>{error}</p>
+                  <button type="button" onClick={recoverAndContinue} className="mt-2 text-[var(--accent-amber)] hover:underline">
+                    Continue with manual setup
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

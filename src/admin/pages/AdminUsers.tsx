@@ -31,13 +31,13 @@ export function AdminUsers() {
         { data: traces }
       ] = await Promise.all([
         supabase.from('agents').select('user_id'),
-        supabase.from('api_keys').select('user_id'),
+        supabase.from('api_keys').select('created_by'),
         supabase.from('action_logs').select('user_id')
       ]);
 
-      const agentCounts = agents?.reduce((acc: any, val: any) => { acc[val.user_id] = (acc[val.user_id] || 0) + 1; return acc; }, {}) || {};
-      const keyCounts = apiKeys?.reduce((acc: any, val: any) => { acc[val.user_id] = (acc[val.user_id] || 0) + 1; return acc; }, {}) || {};
-      const traceCounts = traces?.reduce((acc: any, val: any) => { acc[val.user_id] = (acc[val.user_id] || 0) + 1; return acc; }, {}) || {};
+      const agentCounts = agents?.reduce((acc: any, val: any) => { acc[val.created_by] = (acc[val.created_by] || 0) + 1; return acc; }, {}) || {};
+      const keyCounts = apiKeys?.reduce((acc: any, val: any) => { acc[val.created_by] = (acc[val.created_by] || 0) + 1; return acc; }, {}) || {};
+      const traceCounts = traces?.reduce((acc: any, val: any) => { acc[val.created_by] = (acc[val.created_by] || 0) + 1; return acc; }, {}) || {};
 
       fetchedUsers = fetchedUsers.map((u: any) => ({
         ...u,

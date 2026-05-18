@@ -6,6 +6,7 @@ import { ChevronDown, ChevronUp, Search, CheckCircle, XCircle, Copy } from 'luci
 import { supabase } from '@/src/lib/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { deliverWebhook } from '@/src/lib/webhooks';
+import { createSlug, isValidSlug } from '@/src/lib/slug';
 
 interface RegisterAgentModalProps {
   open: boolean;
@@ -59,7 +60,7 @@ export function RegisterAgentModal({ open, onClose, onSuccess, uid }: RegisterAg
   // Auto-generate slug
   useEffect(() => {
     if (!name) return;
-    const generated = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+    const generated = createSlug(name);
     setSlug(generated);
   }, [name]);
 
@@ -94,7 +95,7 @@ export function RegisterAgentModal({ open, onClose, onSuccess, uid }: RegisterAg
     return () => clearTimeout(timeoutEvent);
   }, [slug, uid, isSuccess]);
 
-  const isValid = name.length >= 2 && name.length <= 100 && slugAvailable === true && type && slug.match(/^[a-z0-9-]+$/);
+  const isValid = name.trim().length >= 2 && name.trim().length <= 100 && slugAvailable === true && type && isValidSlug(slug);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,9 +106,10 @@ export function RegisterAgentModal({ open, onClose, onSuccess, uid }: RegisterAg
       const { data: profile } = await supabase.from('user_profiles').select('org_id').eq('id', uid).single();
       
       const { data: newAgent, error } = await supabase.from('agents').insert({
+        user_id: uid,
         created_by: uid,
         org_id: profile?.org_id,
-        name,
+        name: name.trim(),
         slug,
         agent_type: type,
         description: description || null,

@@ -5,6 +5,7 @@ import {
   GitMerge, Key, DollarSign, Receipt, Briefcase, CloudRain, AlertTriangle, 
   ToggleLeft, Settings, Search, Bell, ChevronLeft, ChevronRight, LogOut, Lock
 } from 'lucide-react';
+import { clearAdminSession, parseAdminSession } from './adminSession';
 
 const ADMIN_NAVIGATION = [
   {
@@ -60,8 +61,7 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const sessionRaw = sessionStorage.getItem('adminSession');
-  const session = sessionRaw ? JSON.parse(sessionRaw) : null;
+  const session = parseAdminSession(sessionStorage.getItem('adminSession'));
   const adminEmail = session?.email || 'admin@arkvoid.com';
   const adminInitials = adminEmail.substring(0, 2).toUpperCase();
 
@@ -91,7 +91,7 @@ export function AdminLayout() {
   }, [location.pathname]);
 
   const handleLogout = () => {
-    sessionStorage.removeItem('adminSession');
+    clearAdminSession();
     navigate('/admin/manish/nine-heaven/access-voidsoul');
   };
 
@@ -316,7 +316,7 @@ function ChangePasswordModal({ isOpen, onClose }: { isOpen: boolean, onClose: ()
     if (newPwd !== confirm) return alert('Passwords do not match');
     // Implement hash check logic here later
     alert('Password updated. Please log in again.');
-    sessionStorage.removeItem('adminSession');
+    clearAdminSession();
     window.location.href = '/admin/manish/nine-heaven/access-voidsoul';
   };
 

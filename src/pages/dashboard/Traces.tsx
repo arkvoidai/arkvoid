@@ -10,6 +10,7 @@ import { supabase } from '@/src/lib/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { TestTraceModal } from '@/src/components/dashboard/TestTraceModal';
 import { Button } from '@/src/components/ui/button';
+import { escapeHtml, sanitizeHtml } from '@/src/lib/sanitize';
 
 const RISK_LEVELS = ['All', 'Low', 'Medium', 'High', 'Critical'];
 
@@ -120,7 +121,7 @@ export function Traces({ agentId }: { agentId?: string }) {
     if (user && user.user_metadata?.plan !== 'Growth' && !agentId) {
        import('@/src/lib/supabase/client').then(({ supabase }) => {
            const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
-           supabase.from('action_logs').select('id', { count: 'exact', head: true }).lt('started_at', sevenDaysAgo).then(res => {
+           supabase.from('action_logs').select('id', { count: 'exact', head: true }).eq('user_id', user.id).lt('started_at', sevenDaysAgo).then(res => {
              if ((res.count || 0) > 0) {
                 setHasHiddenTraces(true);
              }
@@ -732,10 +733,10 @@ const TraceRow: React.FC<{ trace: any, triggeredPolicies: any[], hasPolicies: bo
                         </div>
                         <pre className="bg-[#0A0A0A] border border-[var(--border-default)] rounded-md p-4 overflow-auto text-[11px] font-mono leading-relaxed h-[150px] w-full">
                           <code dangerouslySetInnerHTML={{
-                            __html: metadataJson
-                              .replace(/"([^"]+)":/g, '<span class="text-[var(--accent-amber)]">"$1"</span>:')
-                              .replace(/: "([^"]+)"/g, ': <span class="text-green-400">"$1"</span>')
-                              .replace(/: ([0-9]+)/g, ': <span class="text-blue-400">$1</span>')
+                            __html: sanitizeHtml(escapeHtml(metadataJson)
+                              .replace(/"([^"]+)":/g, '<span class="text-[var(--accent-amber)]">&quot;$1&quot;</span>:')
+                              .replace(/: "([^"]+)"/g, ': <span class="text-green-400">&quot;$1&quot;</span>')
+                              .replace(/: ([0-9]+)/g, ': <span class="text-blue-400">$1</span>'))
                           }} />
                         </pre>
                       </div>

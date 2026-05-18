@@ -7,8 +7,12 @@ const isPlaceholder = (val: string | undefined) => !val || val === 'YOUR_SUPABAS
 
 export const isSupabaseConfigured = !isPlaceholder(vSUPABASE_URL) && !isPlaceholder(vSUPABASE_KEY);
 
-const supabaseUrl = vSUPABASE_URL || 'https://placeholder.supabase.co';
-const supabasePublishableKey = vSUPABASE_KEY || 'placeholder_key';
+if (import.meta.env.PROD && !isSupabaseConfigured) {
+  throw new Error('Missing Supabase environment variables. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
+}
+
+const supabaseUrl = vSUPABASE_URL || 'http://127.0.0.1:54321';
+const supabasePublishableKey = vSUPABASE_KEY || 'local-development-key';
 
 export const supabase = createClient(supabaseUrl, supabasePublishableKey);
 

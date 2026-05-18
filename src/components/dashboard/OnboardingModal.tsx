@@ -3,6 +3,8 @@ import { Modal } from '@/src/components/ui/modal';
 import { Button } from '@/src/components/ui/button';
 import { Hexagon, Shield, Activity, Brain, CheckCircle, Copy } from 'lucide-react';
 import { supabase } from '@/src/lib/supabase/client';
+import { createApiKeyForUser } from '@/src/lib/apiKeys';
+import { createSlug } from '@/src/lib/slug';
 import { useAuth } from '@/src/hooks/useAuth';
 import { Logo } from '@/src/components/shared/logo';
 
@@ -26,8 +28,9 @@ export function OnboardingModal({ isOpen, onClose, userName }: { isOpen: boolean
       const { data: profile } = await supabase.from('user_profiles').select('org_id').eq('id', uid).single();
       const orgId = profile?.org_id;
 
-      const slug = agentName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const slug = `${createSlug(agentName)}-${Math.random().toString(36).slice(2, 6)}`;
       const { error } = await supabase.from('agents').insert({
+        user_id: uid,
         created_by: uid,
         org_id: orgId,
         name: agentName,
@@ -39,7 +42,7 @@ export function OnboardingModal({ isOpen, onClose, userName }: { isOpen: boolean
       if (error) throw error;
       setStep(3);
     } catch (e: any) {
-      console.error('Failed to register agent', e);
+      if (window.location.hostname === 'localhost') console.error('Failed to register agent', e);
       if (e.message?.includes('row-level security')) {
         setErrorMsg('Database error: RLS policy blocked the insert. Please run the provided SQL fixes.');
       } else {
@@ -57,18 +60,12 @@ export function OnboardingModal({ isOpen, onClose, userName }: { isOpen: boolean
       const { data: profile } = await supabase.from('user_profiles').select('org_id').eq('id', uid).single();
       const orgId = profile?.org_id;
 
-      const fakeKey = `ARK_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
-      const { error } = await supabase.from('api_keys').insert({
-        created_by: uid,
-        org_id: orgId || null,
-        name: 'Default Environment',
-        key_prefix: fakeKey.substring(0, 8),
-        key_hash: fakeKey
-      });
-      if (error) throw error;
-      setApiKey(fakeKey);
+      if (!uid) throw new Error('You must be signed in to create an API key.');
+      const result = await createApiKeyForUser(uid, 'Default Environment', orgId || null);
+      if (result.error || !result.data) throw new Error(result.error || 'Failed to generate API key.');
+      setApiKey(result.data.fullKey);
     } catch (e: any) {
-      console.error('Failed generating key', e);
+      if (window.location.hostname === 'localhost') console.error('Failed generating key', e);
       if (e.message?.includes('row-level security')) {
         setErrorMsg('Database error: RLS policy blocked the insert. Please run the provided SQL fixes.');
       } else {
@@ -87,7 +84,7 @@ export function OnboardingModal({ isOpen, onClose, userName }: { isOpen: boolean
 
   const markComplete = async () => {
     if (uid) {
-      await supabase.auth.updateUser({ data: { onboarding_complete: true } });
+      await supabase.auth.updateUser({ data: { onboarding_complete: true, first_login_complete: true } });
     }
     onClose();
   };

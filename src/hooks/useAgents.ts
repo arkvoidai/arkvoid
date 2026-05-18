@@ -22,6 +22,7 @@ export function useAgents() {
       const { data, error: fetchError } = await supabase
         .from('agents')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
@@ -47,6 +48,8 @@ export function useAgents() {
           schema: 'public', 
           table: 'agents'
         }, (payload) => {
+          if ((payload.new as { user_id?: string }).user_id && (payload.new as { user_id?: string }).user_id !== user.id) return;
+          if (payload.eventType === 'DELETE' && (payload.old as { user_id?: string }).user_id && (payload.old as { user_id?: string }).user_id !== user.id) return;
           if (payload.eventType === 'INSERT') {
             setAgents(prev => [payload.new, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
@@ -81,6 +84,7 @@ export function useAgents() {
 
     const { data, error } = await supabase.from('agents').insert({
       ...newAgent,
+      user_id: user.id,
       created_by: user.id,
       org_id: profile?.org_id
     }).select().single();

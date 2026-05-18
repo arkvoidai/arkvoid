@@ -190,8 +190,10 @@ export function Overview() {
   useEffect(() => {
     if (!user) return;
 
-    if (user?.user_metadata?.onboarding_complete === false || user?.user_metadata?.onboarding_complete === undefined) {
+    if (user && user.user_metadata?.onboarding_complete !== true && user.user_metadata?.first_login_complete !== true) {
        setShowOnboarding(true);
+    } else {
+       setShowOnboarding(false);
     }
 
     const dismissed = localStorage.getItem('ark_welcome_dismissed');
@@ -207,7 +209,7 @@ export function Overview() {
         filter: `user_id=eq.${user.id}`
       }, (payload) => {
         // Fetch agent name for new trace
-        supabase.from('agents').select('name').eq('id', payload.new.agent_id).single()
+        supabase.from('agents').select('name').eq('id', payload.new.agent_id).eq('user_id', user.id).single()
           .then(({ data: agentData }) => {
             const newTrace = { ...payload.new, agents: { name: agentData?.name || 'Unknown' } };
             setLiveTraces(prev => [newTrace, ...prev].slice(0, 10));

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { 
+import {
   Database, Activity, CheckCircle2, Key, Zap, Fingerprint, 
   ScrollText, Lock, User, GitBranch, ShieldAlert, Check, X, Github, Shield,
   Plus, ArrowRight, Terminal, UserCheck, Minus, Search, ExternalLink
 } from 'lucide-react';
+import { sanitizeHtml, escapeHtml } from '@/src/lib/sanitize';
 import { cn } from '@/src/lib/utils';
 import { 
   SiOpenai, SiAnthropic, SiGoogle, SiGithub, SiMeta, SiStripe,
@@ -817,7 +818,7 @@ function HowItWorks() {
     return text.split('\n').map((line, i, arr) => {
       if (line.includes('#')) {
         const parts = line.split('#');
-        return <div key={i}><span dangerouslySetInnerHTML={{ __html: parts[0] }} /><span className="text-[#6E6E73]">#{parts[1]}</span>{i < arr.length - 1 && '\n'}</div>;
+        return <div key={i}><span dangerouslySetInnerHTML={{ __html: sanitizeHtml(escapeHtml(parts[0])) }} /><span className="text-[#6E6E73]">#{parts[1]}</span>{i < arr.length - 1 && '\n'}</div>;
       }
       
       let highlightedLine = line;
@@ -828,7 +829,7 @@ function HowItWorks() {
 
       return (
         <React.Fragment key={i}>
-          <span dangerouslySetInnerHTML={{ __html: highlightedLine }} />
+          <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(highlightedLine) }} />
           {i < arr.length - 1 && '\n'}
         </React.Fragment>
       );

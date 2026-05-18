@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, ShieldAlert } from 'lucide-react';
-import { ALLOWED_EMAILS } from './AdminAuthGuard';
+import { ALLOWED_EMAILS, persistAdminSession } from './adminSession';
 import { supabase } from '../lib/supabase/client';
 
 export function AdminLogin() {
@@ -76,11 +76,12 @@ export function AdminLogin() {
       }
 
       const sessionData = {
-        token: crypto.randomUUID() + Date.now().toString(),
-        email,
+        token: `${crypto.randomUUID()}-${crypto.randomUUID()}`,
+        email: email as (typeof ALLOWED_EMAILS)[number],
+        issuedAt: Date.now(),
         expires: Date.now() + 8 * 60 * 60 * 1000
       };
-      sessionStorage.setItem('adminSession', JSON.stringify(sessionData));
+      persistAdminSession(sessionData);
       
       navigate('/admin/manish/nine-heaven/access-voidsoul/dashboard');
 

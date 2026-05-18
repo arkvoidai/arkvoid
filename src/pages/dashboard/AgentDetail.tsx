@@ -77,6 +77,7 @@ export function AgentDetail() {
         .from('github_repos')
         .select('*')
         .eq('agent_id', data.id)
+        .eq('user_id', user!.id)
         .maybeSingle();
       if (repoData) setGithubRepo(repoData);
 
@@ -88,10 +89,10 @@ export function AgentDetail() {
 
       // 2. Fetch Stats
       if (data) {
-        const { count: total } = await supabase.from('action_logs').select('*', { count: 'exact', head: true }).eq('agent_id', data.id);
+        const { count: total } = await supabase.from('action_logs').select('*', { count: 'exact', head: true }).eq('agent_id', data.id).eq('user_id', user!.id);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const { count: todayCount } = await supabase.from('action_logs').select('*', { count: 'exact', head: true }).eq('agent_id', data.id).gte('started_at', today.toISOString());
+        const { count: todayCount } = await supabase.from('action_logs').select('*', { count: 'exact', head: true }).eq('agent_id', data.id).eq('user_id', user!.id).gte('started_at', today.toISOString());
         
         setTotalTraces(total || 0);
         setTracesToday(todayCount || 0);
@@ -100,6 +101,7 @@ export function AgentDetail() {
         const { data: traces } = await supabase.from('action_logs')
           .select('id, trace_id, agent_id, action_type, risk_score, latency_ms, input_hash, output_hash, started_at, status')
           .eq('agent_id', data.id)
+          .eq('user_id', user!.id)
           .order('started_at', { ascending: false })
           .limit(10);
         
@@ -129,6 +131,7 @@ export function AgentDetail() {
           .from('anomaly_events')
           .select('*')
           .eq('agent_id', data.id)
+          .eq('user_id', user!.id)
           .order('created_at', { ascending: false });
         if (anoms) setAnomalies(anoms);
 
@@ -182,7 +185,7 @@ export function AgentDetail() {
     if (!agent) return;
     try {
       setAgent({ ...agent, ...updates }); // Optimistic UI
-      await supabase.from('agents').update(updates).eq('id', agent.id);
+      await supabase.from('agents').update(updates).eq('id', agent.id).eq('user_id', user?.id ?? '');
     } catch (e) {
       console.error(e);
       // Revert on error
@@ -199,7 +202,7 @@ export function AgentDetail() {
     if (!agent || deleteConfirmSlug !== agent.slug) return;
     setIsDeleting(true);
     try {
-      await supabase.from('agents').delete().eq('id', agent.id);
+      await supabase.from('agents').delete().eq('id', agent.id).eq('user_id', user?.id ?? '');
       navigate('/dashboard/agents');
     } catch (e) {
       console.error(e);
@@ -504,7 +507,7 @@ jobs:
                          variant="outline" 
                          size="sm"
                          onClick={async () => {
-                           await supabase.from('anomaly_events').update({ is_acknowledged: true }).eq('id', anomaly.id);
+                           await supabase.from('anomaly_events').update({ is_acknowledged: true }).eq('id', anomaly.id).eq('user_id', user?.id ?? '');
                            setAnomalies(prev => prev.map(a => a.id === anomaly.id ? { ...a, is_acknowledged: true } : a));
                          }}
                        >
