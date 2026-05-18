@@ -45,7 +45,7 @@ export function Login() {
 
     try {
       const redirectURL = `${window.location.origin}${returnUrl}`;
-      await signInWithOtp(email, { data: { email_redirect_to: redirectURL } });
+      await signInWithOtp(email, { emailRedirectTo: redirectURL });
       setSuccess(true);
     } catch (err: any) {
       if (err.message?.toLowerCase().includes('rate limit') || err.message?.toLowerCase().includes('too many')) {
@@ -222,7 +222,7 @@ export function Login() {
                   className="w-full h-[50px] bg-white text-black hover:bg-[#e5e5ea] font-medium text-[15px] rounded-[14px] transition-transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                   disabled={!isValid || loading}
                 >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Send Magic Link'}
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Send Verification Code'}
                 </button>
               ) : (
                 <div className="overflow-hidden animate-in slide-in-from-top-2 fade-in duration-300 ease-out mt-3">

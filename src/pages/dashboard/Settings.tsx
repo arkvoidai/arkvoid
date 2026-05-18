@@ -485,7 +485,7 @@ export function Settings() {
                               </h4>
                               <p className="text-[13px] text-[var(--text-secondary)] mt-1">Add an extra layer of security to your account.</p>
                            </div>
-                           <Button variant="secondary" className="w-full md:w-auto" onClick={() => alert('Added to waitlist!')}>Join Waitlist</Button>
+                           <Button variant="secondary" className="w-full md:w-auto" disabled>Waitlist · Coming Soon</Button>
                         </div>
                      </div>
                   </div>
@@ -517,7 +517,7 @@ export function Settings() {
                                  </p>
                              </div>
                              {user?.user_metadata?.plan && user.user_metadata.plan !== 'Free' ? (
-                               <Button variant="secondary" onClick={() => alert('Redirect to Stripe/Razorpay Portal')} className="shrink-0 w-full md:w-auto">Manage Subscription</Button>
+                               <Button variant="secondary" disabled className="shrink-0 w-full md:w-auto">Billing Portal · Coming Soon</Button>
                              ) : null}
                          </div>
 

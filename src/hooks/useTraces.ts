@@ -25,6 +25,7 @@ export function useTraces(agentId?: string) {
           id,
           trace_id,
           agent_id,
+          org_id,
           action_type,
           risk_score,
           latency_ms,
@@ -32,8 +33,10 @@ export function useTraces(agentId?: string) {
           output_hash,
           started_at,
           status,
+          metadata,
           agents:agent_id (name, slug)
         `)
+        .eq('user_id', user.id)
         .order('started_at', { ascending: false })
         .limit(50);
 
@@ -51,6 +54,7 @@ export function useTraces(agentId?: string) {
         const { data: anoms } = await supabase
           .from('anomaly_events')
           .select('*')
+          .eq('user_id', user.id)
           .in('trace_id', traceIds);
         
         if (anoms) {
@@ -71,7 +75,7 @@ export function useTraces(agentId?: string) {
       setTraces(mappedData);
       setError(null);
     } catch (err: any) {
-      console.error('Error fetching traces:', err);
+      if (window.location.hostname === 'localhost') console.error('Error fetching traces:', err);
       setError(err);
     } finally {
       setLoading(false);
@@ -82,23 +86,18 @@ export function useTraces(agentId?: string) {
     if (user) {
       fetchTraces();
 
-      let filterString = `user_id=eq.${user.id}`;
-      if (agentId) {
-          // Unfortunately standard pg_changes filter only supports one eq. 
-          // We will filter on client instead if agentId is present.
-          filterString = ``; 
-      }
-
       const channel = supabase.channel('action_logs-realtime')
         .on('postgres_changes', { 
           event: 'INSERT', 
           schema: 'public', 
-          table: 'action_logs'
+          table: 'action_logs',
+          filter: `user_id=eq.${user.id}`
         }, async (payload) => {
           // Must fetch agent info for the new trace
           if (agentId && payload.new.agent_id !== agentId) return;
 
-          const { data: agentData } = await supabase.from('agents').select('name, slug').eq('id', payload.new.agent_id).single();
+          if (payload.new.user_id !== user.id) return;
+          const { data: agentData } = await supabase.from('agents').select('name, slug').eq('id', payload.new.agent_id).eq('user_id', user.id).single();
           
           const newTrace = { 
             ...payload.new, 
@@ -147,6 +146,7 @@ export function useTrace(id: string | undefined) {
                 id,
                 trace_id,
                 agent_id,
+                org_id,
                 action_type,
                 risk_score,
                 latency_ms,
@@ -154,9 +154,11 @@ export function useTrace(id: string | undefined) {
                 output_hash,
                 started_at,
                 status,
+                metadata,
                 agents:agent_id (name, slug)
             `)
             .eq('id', id)
+            .eq('user_id', user.id)
             .single();
         
         if (data) {

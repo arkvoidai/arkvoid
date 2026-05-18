@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Save, AlertTriangle, Shield, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase/client';
+import { getAdminEmail } from '../adminSession';
 
 export function AdminUserDetail() {
   const { id } = useParams<{ id: string }>();
@@ -47,7 +48,7 @@ export function AdminUserDetail() {
       ] = await Promise.all([
         supabase.from('agents').select('*').eq('user_id', id),
         supabase.from('action_logs').select('*').eq('user_id', id).limit(50).order('created_at', { ascending: false }),
-        supabase.from('api_keys').select('*').eq('user_id', id)
+        supabase.from('api_keys').select('*').eq('created_by', id)
       ]);
 
       setAgents(a || []);
@@ -77,8 +78,7 @@ export function AdminUserDetail() {
     }
     
     // Example call to admin-user-actions edge function
-    const sessionRaw = sessionStorage.getItem('adminSession');
-    const adminEmail = sessionRaw ? JSON.parse(sessionRaw).email : 'admin';
+    const adminEmail = getAdminEmail('admin');
 
     await supabase.functions.invoke('admin-user-actions', {
       body: { action, userId: id, adminEmail }

@@ -236,7 +236,7 @@ export function DashboardLayout() {
     }
   };
 
-  if (user && !isGuest && user.user_metadata?.first_login_complete !== true) {
+  if (user && !isGuest && (user.user_metadata?.first_login_complete !== true || user.user_metadata?.onboarding_complete !== true)) {
     return <WelcomeFlow />;
   }
 
@@ -485,7 +485,7 @@ export function DashboardLayout() {
           </div>
         </div>
         
-        <main className="flex-1 flex flex-col overflow-y-auto relative pb-[70px] md:pb-0">
+        <main className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden relative">
           <AnnouncementsBanner />
           <DashboardErrorBoundary>
             <div key={location.pathname} className="page-enter min-h-full">
@@ -521,19 +521,6 @@ export function DashboardLayout() {
       </div>
 
       <CommandPalette open={cmdOpen} onOpenChange={setCmdOpen} />
-
-      {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 h-[56px] border-t border-[var(--border-subtle)] bg-[var(--bg-elevated)] backdrop-blur-md z-[60] flex items-stretch justify-around px-2 pb-[env(safe-area-inset-bottom)]">
-         {workspaceItems.slice(0, 4).map(item => {
-            const active = isActive(item.path);
-            return (
-              <Link key={item.path} to={item.path} className={`flex flex-col items-center justify-center flex-1 relative transition-colors ${active ? 'text-[var(--accent-amber)]' : 'text-[var(--text-tertiary)] hover:text-white'}`}>
-                 {active && <div className="absolute top-0 left-0 right-0 h-[2px] bg-[var(--accent-amber)]" />}
-                 <item.icon className="w-6 h-6" />
-              </Link>
-            )
-         })}
-      </div>
 
       {/* Mobile nav and overlay */}
       <div 

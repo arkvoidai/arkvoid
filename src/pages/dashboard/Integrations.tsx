@@ -5,6 +5,7 @@ import { Card } from '@/src/components/ui/card';
 import { Button } from '@/src/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/src/lib/supabase/client';
+import { createAgentForUser } from '@/src/lib/agents';
 import { useAuth } from '@/src/hooks/useAuth';
 
 const ALL_INTEGRATIONS = [
@@ -243,19 +244,20 @@ export function Integrations() {
           
           if (githubAutoCreateAgents) {
             const cleanSlug = repo.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-            const { data: existingAgent } = await supabase.from('agents').select('id').eq('slug', cleanSlug).maybeSingle();
+            const { data: existingAgent } = await supabase.from('agents').select('id').eq('slug', cleanSlug).eq('user_id', user.id).maybeSingle();
             
             if (existingAgent) {
                agentId = existingAgent.id;
             } else {
-              const { data: newAgent } = await supabase.from('agents').insert({
-                user_id: user.id,
+              const newAgent = await createAgentForUser({
+                userId: user.id,
                 name: repo.name,
-                slug: cleanSlug + '-' + Math.random().toString(36).substring(2, 8),
-                type: 'custom',
+                slug: `${cleanSlug}-${Math.random().toString(36).substring(2, 8)}`,
+                agentType: 'custom',
                 description: `Automated agent for GitHub repository: ${repo.full_name}`,
-                metadata: { github_repo: repo.full_name }
-              }).select().single();
+                metadata: { github_repo: repo.full_name, registration_source: 'github_integration' },
+                status: 'active'
+              });
               agentId = newAgent?.id;
             }
           }

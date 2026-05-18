@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '@/src/lib/supabase/client';
 import { useAuth } from '@/src/hooks/useAuth';
 import { Bot, FileText, MessageSquare, Landmark, Activity, Building2, CheckCircle2, AlertCircle, ShieldAlert, Users, Code, LineChart, Briefcase } from 'lucide-react';
 import { Logo } from '@/src/components/shared/logo';
 import { useNavigate } from 'react-router-dom';
+import { toSafeErrorMessage } from '@/src/lib/async';
+import { createAgentForUser } from '@/src/lib/agents';
 
 export function WelcomeFlow() {
   const { user } = useAuth();
@@ -13,36 +15,26 @@ export function WelcomeFlow() {
   const [mainWorry, setMainWorry] = useState<string | null>(null);
   const [teamType, setTeamType] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
 
   const toggleUseCase = (id: string) => {
     setUseCases(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
   const handleComplete = async () => {
-    if (!user) return;
+    if (!user || creating) return;
     setCreating(true);
+    setError('');
 
     try {
-      // 1. Update user metadata
-      await supabase.auth.updateUser({
-        data: {
-          use_case: useCases,
-          main_worry: mainWorry,
-          team_type: teamType,
-          first_login_complete: true,
-          tour_complete: false // ensure tour is ready
-        }
-      });
-
-      // 2. Determine agent defaults based on first use_case
-      const primaryCase = useCases[0] || 'custom';
+      const safeUseCases = useCases.length > 0 ? useCases : ['agents'];
+      const primaryCase = safeUseCases[0];
       let agentName = "My AI Agent";
       let agentType = "custom";
 
       switch (primaryCase) {
         case 'documents':
           agentName = "Document Processor";
-          agentType = "custom";
           break;
         case 'chatbot':
           agentName = "Customer Chatbot";
@@ -54,38 +46,48 @@ export function WelcomeFlow() {
           break;
         case 'healthcare':
           agentName = "Healthcare AI";
-          agentType = "custom";
           break;
         case 'enterprise':
           agentName = "Enterprise AI Agent";
-          agentType = "custom";
           break;
         case 'agents':
         default:
           agentName = "My AI Agent";
-          agentType = "custom";
           break;
       }
 
-      const slug = agentName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).substring(2, 6);
-
-      const { data: profile } = await supabase.from('user_profiles').select('org_id').eq('id', user.id).single();
-
-      // 3. Auto-create first agent
-      await supabase.from('agents').insert({
-        created_by: user.id,
-        org_id: profile?.org_id || null,
+      await createAgentForUser({
+        userId: user.id,
         name: agentName,
-        slug,
-        agent_type: agentType,
+        agentType,
         description: "Auto-created from onboarding",
-        status: 'active'
+        status: 'active',
+        metadata: { registration_source: 'welcome_flow', use_case: primaryCase },
       });
 
-      // Reload window to refetch user context or navigate to overview
-      window.location.href = '/dashboard/overview';
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: {
+          use_case: safeUseCases,
+          main_worry: mainWorry || 'visibility',
+          team_type: teamType || 'developer',
+          onboarding_role: teamType || 'developer',
+          first_login_complete: true,
+          onboarding_complete: true,
+          tour_complete: false
+        }
+      });
+
+      if (metadataError) throw metadataError;
+
+      navigate('/dashboard/overview', { replace: true });
     } catch (e) {
-      console.error("Failed to complete setup:", e);
+      const message = toSafeErrorMessage(e, 'We could not finish setup. Please retry after checking your connection.');
+      setError(message);
+      void supabase.from('error_logs').insert({
+        error_message: `onboarding_failed: ${message}`,
+        page_url: window.location.href,
+        metadata: { user_id: user.id, use_cases: useCases, main_worry: mainWorry, team_type: teamType }
+      });
       setCreating(false);
     }
   };
@@ -113,16 +115,16 @@ export function WelcomeFlow() {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#050505] flex items-center justify-center overflow-y-auto">
-      <div className="w-full max-w-3xl p-6 md:p-12 animate-in fade-in zoom-in-95 duration-500">
-        <div className="flex justify-center mb-12">
+    <div className="fixed inset-0 z-50 bg-[#050505] flex items-start sm:items-center justify-center overflow-y-auto px-3 py-6 sm:p-0">
+      <div className="w-full max-w-3xl p-4 sm:p-6 md:p-12 animate-in fade-in zoom-in-95 duration-500">
+        <div className="flex justify-center mb-6 sm:mb-12">
           <Logo />
         </div>
 
         {step === 1 && (
-          <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
+          <div className="space-y-6 sm:space-y-8 animate-in slide-in-from-right-8 duration-500">
             <div className="text-center">
-              <h1 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-white to-white/60">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-white to-white/60">
                 Welcome to ARKVOID. Let's set you up.
               </h1>
               <p className="text-[var(--text-secondary)] mt-3 text-lg">Tell us what you're working with.</p>
@@ -162,9 +164,9 @@ export function WelcomeFlow() {
         )}
 
         {step === 2 && (
-          <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
+          <div className="space-y-6 sm:space-y-8 animate-in slide-in-from-right-8 duration-500">
             <div className="text-center">
-              <h1 className="text-3xl md:text-4xl font-bold text-white">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
                 What's your biggest worry?
               </h1>
               <p className="text-[var(--text-secondary)] mt-3 text-lg">We'll focus on what matters most to you.</p>
@@ -194,9 +196,9 @@ export function WelcomeFlow() {
         )}
 
         {step === 3 && (
-          <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
+          <div className="space-y-6 sm:space-y-8 animate-in slide-in-from-right-8 duration-500">
             <div className="text-center">
-              <h1 className="text-3xl md:text-4xl font-bold text-white">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">
                 How technical is your team?
               </h1>
               <p className="text-[var(--text-secondary)] mt-3 text-lg">We'll adjust the experience for you.</p>
@@ -238,6 +240,11 @@ export function WelcomeFlow() {
                   <>Set Up My Workspace &rarr;</>
                 )}
               </button>
+              {error && (
+                <div className="mt-4 rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
+                  <p>{error}</p>
+                </div>
+              )}
             </div>
           </div>
         )}

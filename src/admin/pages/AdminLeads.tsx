@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase/client';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import { Download, Building2, Briefcase, Mail, Phone, ChevronDown, CheckCircle, Zap } from 'lucide-react';
 import { PLGSignalsGrid } from '../components/PLGSignalsGrid';
+import { getAdminEmail } from '../adminSession';
 
 const STATUS_COLORS: Record<string, string> = {
   'New': 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
@@ -63,8 +64,7 @@ export function AdminLeads() {
   const saveNote = async (id: string) => {
     if (!adminNote) return;
     try {
-      const sessionRaw = sessionStorage.getItem('adminSession');
-      const adminEmail = sessionRaw ? JSON.parse(sessionRaw).email : 'admin@arkvoid.com';
+      const adminEmail = getAdminEmail();
       await supabase.from('admin_notes').insert({ target_user_id: id, admin_email: adminEmail, note: adminNote });
       alert('Note saved to audit log');
       setAdminNote('');

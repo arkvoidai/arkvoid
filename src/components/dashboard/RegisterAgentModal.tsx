@@ -1,16 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '@/src/components/ui/modal';
 import { Input } from '@/src/components/ui/input';
 import { Button } from '@/src/components/ui/button';
-import { ChevronDown, ChevronUp, Search, CheckCircle, XCircle, Copy } from 'lucide-react';
-import { supabase } from '@/src/lib/supabase/client';
+import { ChevronDown, ChevronUp, CheckCircle, XCircle, Copy, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { deliverWebhook } from '@/src/lib/webhooks';
+import { createSlug, isValidSlug } from '@/src/lib/slug';
+import { useAuth } from '@/src/hooks/useAuth';
+import { useToast } from '@/src/components/ui/toast';
+import { createAgentForUser, isAgentSlugAvailable } from '@/src/lib/agents';
+import { toSafeErrorMessage } from '@/src/lib/async';
 
 interface RegisterAgentModalProps {
   open: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: () => void | Promise<void>;
   uid?: string;
 }
 
@@ -37,8 +41,12 @@ export function RegisterAgentModal({ open, onClose, onSuccess, uid }: RegisterAg
   
   const [isSuccess, setIsSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const toast = useToast();
+  const effectiveUid = uid || user?.id;
 
   // Reset state on open
   useEffect(() => {
@@ -53,13 +61,14 @@ export function RegisterAgentModal({ open, onClose, onSuccess, uid }: RegisterAg
       setSlugChecking(false);
       setIsSuccess(false);
       setCopied(false);
+      setFormError('');
     }
   }, [open]);
 
   // Auto-generate slug
   useEffect(() => {
     if (!name) return;
-    const generated = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+    const generated = createSlug(name);
     setSlug(generated);
   }, [name]);
 
@@ -72,19 +81,17 @@ export function RegisterAgentModal({ open, onClose, onSuccess, uid }: RegisterAg
     const checkSlug = async () => {
       setSlugChecking(true);
       try {
-        const { data, error } = await supabase
-          .from('agents')
-          .select('id')
-          .eq('slug', slug)
-          .eq('user_id', uid)
-          .limit(1);
-        if (data && data.length > 0) {
+        if (!effectiveUid) {
           setSlugAvailable(false);
-        } else {
-          setSlugAvailable(true);
+          setFormError('Sign in before registering an agent.');
+          return;
         }
+        setFormError('');
+        setSlugAvailable(await isAgentSlugAvailable(effectiveUid, slug));
       } catch (e) {
-        console.error(e);
+        const message = toSafeErrorMessage(e, 'Could not check slug availability.');
+        setSlugAvailable(false);
+        setFormError(message);
       } finally {
         setSlugChecking(false);
       }
@@ -92,37 +99,40 @@ export function RegisterAgentModal({ open, onClose, onSuccess, uid }: RegisterAg
 
     const timeoutEvent = setTimeout(checkSlug, 500);
     return () => clearTimeout(timeoutEvent);
-  }, [slug, uid, isSuccess]);
+  }, [slug, effectiveUid, isSuccess]);
 
-  const isValid = name.length >= 2 && name.length <= 100 && slugAvailable === true && type && slug.match(/^[a-z0-9-]+$/);
+  const isValid = Boolean(effectiveUid) && name.trim().length >= 2 && name.trim().length <= 100 && slugAvailable === true && Boolean(type) && isValidSlug(slug);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValid) return;
+    if (!isValid || !effectiveUid) {
+      setFormError('Complete all required fields and choose an available slug.');
+      return;
+    }
     
     setSubmitting(true);
+    setFormError('');
     try {
-      const { data: profile } = await supabase.from('user_profiles').select('org_id').eq('id', uid).single();
-      
-      const { data: newAgent, error } = await supabase.from('agents').insert({
-        created_by: uid,
-        org_id: profile?.org_id,
+      const newAgent = await createAgentForUser({
+        userId: effectiveUid,
         name,
         slug,
-        agent_type: type,
-        description: description || null,
-        status: 'active'
-      }).select().single();
-      if (error) throw error;
+        agentType: type,
+        description,
+        status: 'active',
+        metadata: { registration_source: 'manual_modal' },
+      });
       
-      if (uid) {
-         deliverWebhook('agent.created', { agent_id: newAgent?.id, name, slug, type }, uid);
-      }
+      void deliverWebhook('agent.created', { agent_id: newAgent?.id, name, slug: newAgent?.slug || slug, type }, effectiveUid);
 
-      onSuccess?.();
+      await onSuccess?.();
+      toast.success('Agent registered', `${name.trim()} is ready to receive traces.`);
+      setSlug(newAgent?.slug || slug);
       setIsSuccess(true);
     } catch (e: any) {
-      console.error('Failed to register agent', e);
+      const message = toSafeErrorMessage(e, 'Failed to register agent. Please retry.');
+      setFormError(message);
+      toast.error('Agent registration failed', message);
     } finally {
       setSubmitting(false);
     }
@@ -232,8 +242,15 @@ requests.post("https://arkvoid.cherazen.com/api/v1/traces",
             </div>
           </div>
           {slugAvailable === true && <p className="text-[11px] text-[var(--status-success)] mt-1">Available</p>}
-          {slugAvailable === false && <p className="text-[11px] text-[var(--status-danger)] mt-1">Slug already in use</p>}
+          {slugAvailable === false && <p className="text-[11px] text-[var(--status-danger)] mt-1">Slug unavailable or still being checked</p>}
         </div>
+
+        {formError && (
+          <div className="flex items-start gap-2 rounded-lg border border-[var(--status-danger)]/30 bg-[var(--status-danger-dim)] px-3 py-2 text-[12px] text-[var(--status-danger)]">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{formError}</span>
+          </div>
+        )}
 
         {/* Type */}
         <div>
@@ -311,9 +328,9 @@ requests.post("https://arkvoid.cherazen.com/api/v1/traces",
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-6 border-t border-[var(--border-subtle)] mt-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-[var(--border-subtle)] mt-6">
           <span className="text-[11px] text-[var(--text-tertiary)]">Fields marked * are required</span>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
             <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
             <Button 
               type="submit" 

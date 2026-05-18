@@ -10,6 +10,7 @@ import { supabase } from '@/src/lib/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { TestTraceModal } from '@/src/components/dashboard/TestTraceModal';
 import { Button } from '@/src/components/ui/button';
+import { escapeHtml, sanitizeHtml } from '@/src/lib/sanitize';
 
 const RISK_LEVELS = ['All', 'Low', 'Medium', 'High', 'Critical'];
 
@@ -120,7 +121,7 @@ export function Traces({ agentId }: { agentId?: string }) {
     if (user && user.user_metadata?.plan !== 'Growth' && !agentId) {
        import('@/src/lib/supabase/client').then(({ supabase }) => {
            const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
-           supabase.from('action_logs').select('id', { count: 'exact', head: true }).lt('started_at', sevenDaysAgo).then(res => {
+           supabase.from('action_logs').select('id', { count: 'exact', head: true }).eq('user_id', user.id).lt('started_at', sevenDaysAgo).then(res => {
              if ((res.count || 0) > 0) {
                 setHasHiddenTraces(true);
              }
@@ -234,11 +235,11 @@ export function Traces({ agentId }: { agentId?: string }) {
   const activeFiltersCount = (activeRiskFilter !== 'All' ? 1 : 0) + (activeAgentFilter !== 'All' ? 1 : 0);
 
   return (
-    <div className="flex flex-col h-full bg-black">
+    <div className="flex flex-col h-full bg-black min-w-0">
       {/* Header (Only show if not embedded in Agent detail) */}
       {!agentId && (
         <div className="flex flex-col">
-          <div className="px-8 py-6 border-b border-[var(--border-subtle)] flex items-center justify-between bg-[var(--bg-primary)]">
+          <div className="px-4 sm:px-8 py-6 border-b border-[var(--border-subtle)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-[var(--bg-primary)]">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-default)] flex items-center justify-center shrink-0">
                 <Waveform className="w-5 h-5 text-[var(--accent-amber)]" />
@@ -331,9 +332,9 @@ export function Traces({ agentId }: { agentId?: string }) {
 
       {/* Search & Filter Bar (Sticky) */}
       <div className="sticky top-0 z-20 bg-[var(--bg-primary)] border-b border-[var(--border-subtle)]">
-        <div className="px-6 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4 flex-1">
-            <div className="relative flex-1 max-w-[600px]">
+        <div className="px-4 sm:px-6 py-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-1 w-full min-w-0">
+            <div className="relative w-full sm:flex-1 sm:max-w-[600px]">
               <Search className="w-4 h-4 text-[var(--accent-amber)] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -354,7 +355,7 @@ export function Traces({ agentId }: { agentId?: string }) {
           </div>
           
           {search && (
-            <div className="text-[13px] text-[var(--text-tertiary)]">
+            <div className="text-[12px] sm:text-[13px] text-[var(--text-tertiary)]">
               Showing {sortedTraces.length} of {traces.length} traces matching '{search}'
             </div>
           )}
@@ -363,7 +364,7 @@ export function Traces({ agentId }: { agentId?: string }) {
         {/* Filter Panel (Slide Down) */}
         {isFiltersOpen && (
           <div className="px-6 py-4 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] animate-in slide-in-from-top-2 duration-200">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               
               {/* Risk Level */}
               <div>
@@ -400,11 +401,11 @@ export function Traces({ agentId }: { agentId?: string }) {
 
               {/* Date Filters (Placeholder) */}
               <div>
-                <label className="block text-[11px] font-medium text-[var(--text-tertiary)] uppercase tracking-[0.06em] mb-2">Date Range</label>
-                <div className="flex items-center gap-2">
-                  <input type="date" className="w-full bg-black border border-[var(--border-default)] rounded-md px-3 py-1.5 text-[13px] text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent-amber)]" />
+                <label className="block text-[11px] font-medium text-[var(--text-tertiary)] uppercase tracking-[0.06em] mb-2">Date Range · Coming Soon</label>
+                <div className="flex items-center gap-2 opacity-60">
+                  <input type="date" disabled className="w-full cursor-not-allowed bg-black border border-[var(--border-default)] rounded-md px-3 py-1.5 text-[13px] text-[var(--text-secondary)]" />
                   <span className="text-[var(--text-tertiary)] text-[12px]">to</span>
-                  <input type="date" className="w-full bg-black border border-[var(--border-default)] rounded-md px-3 py-1.5 text-[13px] text-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent-amber)]" />
+                  <input type="date" disabled className="w-full cursor-not-allowed bg-black border border-[var(--border-default)] rounded-md px-3 py-1.5 text-[13px] text-[var(--text-secondary)]" />
                 </div>
               </div>
               
@@ -433,16 +434,25 @@ export function Traces({ agentId }: { agentId?: string }) {
             <button onClick={() => setSelectedRows([])} className="text-[12px] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">Clear</button>
           </div>
           <div className="flex items-center gap-2">
-             <button className="px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border-default)] rounded text-[12px] font-medium text-[var(--text-secondary)] hover:text-white" onClick={() => alert('Export selected traces')}>Export Selected</button>
-             <button className="px-3 py-1.5 border border-[var(--status-warning)]/30 rounded text-[12px] font-medium text-[var(--status-warning)] hover:bg-[var(--status-warning)]/10" onClick={() => alert('Flagged selected')}>Flag Selected</button>
-             <button className="px-3 py-1.5 bg-[var(--status-danger)]/10 border border-[var(--status-danger)]/30 rounded text-[12px] font-medium text-[var(--status-danger)] hover:bg-[var(--status-danger)]/20" onClick={() => alert('Delete selected')}>Delete Selected</button>
+             <button className="px-3 py-1.5 bg-[var(--bg-card)] border border-[var(--border-default)] rounded text-[12px] font-medium text-[var(--text-tertiary)] cursor-not-allowed" disabled>Export Selected · Coming Soon</button>
+             <button className="px-3 py-1.5 border border-[var(--status-warning)]/20 rounded text-[12px] font-medium text-[var(--text-tertiary)] cursor-not-allowed" disabled>Flag Selected · Coming Soon</button>
+             <button className="px-3 py-1.5 bg-[var(--status-danger)]/5 border border-[var(--status-danger)]/20 rounded text-[12px] font-medium text-[var(--text-tertiary)] cursor-not-allowed" disabled>Delete Selected · Coming Soon</button>
           </div>
         </div>
       )}
 
       {/* Table Area */}
       <div className="flex-1 overflow-auto relative custom-scrollbar">
-         <table className="w-full text-left border-collapse">
+         <div className="md:hidden p-4 space-y-3">
+           {loading ? (
+             <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 text-[13px] text-[var(--text-secondary)]">Loading traces...</div>
+           ) : sortedTraces.length === 0 ? (
+             <MobileTraceEmpty hasNoTraces={traces.length === 0} onSendTest={() => setShowTestTraceModal(true)} />
+           ) : (
+             sortedTraces.map((trace: any) => <MobileTraceCard key={trace.id} trace={trace} />)
+           )}
+         </div>
+         <table className="hidden md:table w-full text-left border-collapse">
            <thead className="sticky top-0 bg-[var(--bg-primary)] z-10 before:content-[''] before:absolute before:bottom-0 before:left-0 before:right-0 before:border-b before:border-[var(--border-default)]">
              <tr>
                <th className="px-6 py-3 w-[40px]">
@@ -542,13 +552,55 @@ export function Traces({ agentId }: { agentId?: string }) {
          </table>
          {sortedTraces.length > 0 && (
            <div className="py-8 text-center border-t border-[var(--border-subtle)]">
-              <button className="px-4 py-2 border border-[var(--border-default)] rounded-md text-[13px] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] transition-colors">
-                Load 50 more
+              <button className="px-4 py-2 border border-[var(--border-default)] rounded-md text-[13px] text-[var(--text-tertiary)] cursor-not-allowed" disabled>
+                Load more · Coming Soon
               </button>
            </div>
          )}
       </div>
+      <TestTraceModal
+        open={showTestTraceModal}
+        onClose={() => setShowTestTraceModal(false)}
+        agents={agents}
+        onSuccess={refetch}
+      />
     </div>
+  );
+}
+
+function MobileTraceEmpty({ hasNoTraces, onSendTest }: { hasNoTraces: boolean; onSendTest: () => void }) {
+  return (
+    <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-5 text-center">
+      <Waveform className="mx-auto mb-3 h-10 w-10 text-[var(--text-tertiary)]" />
+      <p className="text-[15px] font-medium text-[var(--text-primary)]">{hasNoTraces ? 'No traces yet' : 'No traces match your filters'}</p>
+      {hasNoTraces && (
+        <>
+          <p className="mt-2 text-[13px] text-[var(--text-secondary)]">Send a no-code test trace to verify your agent pipeline.</p>
+          <Button variant="primary" className="mt-4 w-full" onClick={onSendTest}>Send Test Trace</Button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function MobileTraceCard({ trace }: { trace: any }) {
+  const riskScore = trace.risk_score || 0;
+  const riskClass = riskScore > 70 ? 'text-[var(--status-danger)] bg-[var(--status-danger-dim)]' : riskScore > 30 ? 'text-[var(--status-warning)] bg-[var(--status-warning)]/10' : 'text-[var(--status-success)] bg-[var(--status-success-dim)]';
+
+  return (
+    <Link to={`/dashboard/traces/${trace.id}`} className="block rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card)] p-4 active:bg-[var(--bg-hover)]">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate font-mono text-[12px] text-[var(--text-primary)]">{trace.trace_id}</p>
+          <p className="mt-1 truncate text-[13px] text-[var(--text-secondary)]">{trace.agents?.name || 'Unknown agent'}</p>
+        </div>
+        <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${riskClass}`}>{riskScore}</span>
+      </div>
+      <div className="flex items-center justify-between gap-3 text-[12px] text-[var(--text-tertiary)]">
+        <span className="truncate">{trace.action || trace.action_type || 'inference'}</span>
+        <span className="shrink-0">{trace.created_at ? formatDistanceToNow(new Date(trace.created_at), { addSuffix: true }) : 'just now'}</span>
+      </div>
+    </Link>
   );
 }
 
@@ -732,10 +784,10 @@ const TraceRow: React.FC<{ trace: any, triggeredPolicies: any[], hasPolicies: bo
                         </div>
                         <pre className="bg-[#0A0A0A] border border-[var(--border-default)] rounded-md p-4 overflow-auto text-[11px] font-mono leading-relaxed h-[150px] w-full">
                           <code dangerouslySetInnerHTML={{
-                            __html: metadataJson
-                              .replace(/"([^"]+)":/g, '<span class="text-[var(--accent-amber)]">"$1"</span>:')
-                              .replace(/: "([^"]+)"/g, ': <span class="text-green-400">"$1"</span>')
-                              .replace(/: ([0-9]+)/g, ': <span class="text-blue-400">$1</span>')
+                            __html: sanitizeHtml(escapeHtml(metadataJson)
+                              .replace(/"([^"]+)":/g, '<span class="text-[var(--accent-amber)]">&quot;$1&quot;</span>:')
+                              .replace(/: "([^"]+)"/g, ': <span class="text-green-400">&quot;$1&quot;</span>')
+                              .replace(/: ([0-9]+)/g, ': <span class="text-blue-400">$1</span>'))
                           }} />
                         </pre>
                       </div>

@@ -27,13 +27,13 @@ export function PremiumGateProvider({ children }: { children: ReactNode }) {
         const fetchUrgency = async () => {
            // check high risk traces
            const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
-           const { data: riskTraces } = await supabase.from('action_logs').select('id').gte('risk_score', 80).gte('started_at', weekAgo);
+           const { data: riskTraces } = await supabase.from('action_logs').select('id').eq('user_id', user.id).gte('risk_score', 80).gte('started_at', weekAgo);
            if (riskTraces && riskTraces.length > 0) {
               setUrgency({ type: 'risk', message: `⚠️ You have ${riskTraces.length} high-risk events that need monitoring.` });
               return;
            }
 
-           const { data: recentTraces } = await supabase.from('action_logs').select('id').gte('started_at', new Date(Date.now() - 24 * 3600000).toISOString()).limit(1);
+           const { data: recentTraces } = await supabase.from('action_logs').select('id').eq('user_id', user.id).gte('started_at', new Date(Date.now() - 24 * 3600000).toISOString()).limit(1);
            if (!recentTraces || recentTraces.length === 0) {
               setUrgency({ type: 'inactive', message: `😴 One of your agents may have stopped working.` });
               return;
@@ -46,7 +46,7 @@ export function PremiumGateProvider({ children }: { children: ReactNode }) {
   const showPremiumModal = (r: PremiumReason = 'feature') => {
     setReason(r);
     setIsOpen(true);
-    console.log("Analytics: upgrade_modal_shown_reason_" + r);
+    if (import.meta.env.DEV) console.log("Analytics: upgrade_modal_shown_reason_" + r);
   };
 
   const closePremiumModal = () => {

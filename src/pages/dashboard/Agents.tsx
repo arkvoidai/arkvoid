@@ -12,7 +12,7 @@ import { usePremiumGate } from '@/src/hooks/usePremiumGate';
 const FILTERS = ['All', 'Active', 'Inactive', 'High Risk', 'Critical Risk'];
 
 const AgentsListSkeleton = () => (
-   <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
+   <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-4">
      {[1, 2, 3].map(i => (
        <div key={i} className="card" style={{background: '#141414', border: '1px solid #1E1E1E', borderRadius: '12px', padding: '20px', height: '200px', display: 'flex', flexDirection: 'column'}}>
           <div style={{height: 24, width: '70%', borderRadius: 4, background: 'linear-gradient(90deg, #1A1A1A 25%, #222 50%, #1A1A1A 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite'}} />
@@ -26,7 +26,7 @@ const AgentsListSkeleton = () => (
 export function Agents() {
   const { user, isGuest } = useAuth();
   const { showPremiumModal } = usePremiumGate();
-  const { agents, loading } = useAgents();
+  const { agents, loading, refetch } = useAgents();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [activeFilter, setActiveFilter] = useState('All');
@@ -35,7 +35,7 @@ export function Agents() {
   // Derive filtered agents
   const filteredAgents = agents?.filter((agent: any) => {
     // text search
-    if (debouncedSearch && !agent.name.toLowerCase().includes(debouncedSearch.toLowerCase()) && !agent.slug.toLowerCase().includes(debouncedSearch.toLowerCase()) && !agent.agent_type.toLowerCase().includes(debouncedSearch.toLowerCase())) {
+    if (debouncedSearch && !(agent.name || '').toLowerCase().includes(debouncedSearch.toLowerCase()) && !(agent.slug || '').toLowerCase().includes(debouncedSearch.toLowerCase()) && !(agent.agent_type || agent.type || 'custom').toLowerCase().includes(debouncedSearch.toLowerCase())) {
       return false;
     }
     // chip filter
@@ -66,8 +66,8 @@ export function Agents() {
   return (
     <div className="flex flex-col min-h-full">
       {/* Page Header */}
-      <div className="flex items-center justify-between px-8 py-6 border-b border-[var(--border-subtle)]">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 px-4 sm:px-8 py-6 border-b border-[var(--border-subtle)]">
+        <div className="flex items-center gap-4 w-full min-w-0">
           <div className="w-10 h-10 rounded-lg bg-[var(--bg-elevated)] border border-[var(--border-default)] flex items-center justify-center shrink-0">
             <Cpu className="w-5 h-5 text-[var(--text-primary)]" />
           </div>
@@ -174,8 +174,8 @@ export function Agents() {
       ) : (
         <>
           {/* Search & Filter Bar */}
-          <div className="sticky top-0 z-10 bg-[var(--bg-primary)] border-b border-[var(--border-subtle)] px-6 py-3 flex items-center gap-6">
-            <div className="relative w-[320px]">
+          <div className="sticky top-0 z-10 bg-[var(--bg-primary)] border-b border-[var(--border-subtle)] px-4 sm:px-6 py-3 flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-6">
+            <div className="relative w-full lg:w-[320px]">
               <Search className="w-4 h-4 text-[var(--text-tertiary)] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -186,7 +186,7 @@ export function Agents() {
               />
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-1">
               {FILTERS.map(filter => (
                 <button
                   key={filter}
@@ -208,7 +208,7 @@ export function Agents() {
           </div>
 
           {/* Grid Area */}
-          <div className="p-6 flex-1 bg-[#0A0A0A]">
+          <div className="p-4 sm:p-6 flex-1 bg-[#0A0A0A]">
             {loading && !agents.length ? (
                <AgentsListSkeleton />
             ) : filteredAgents.length === 0 ? (
@@ -219,7 +219,7 @@ export function Agents() {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,320px),1fr))] gap-4">
                 {filteredAgents.map((agent: any, index: number) => (
                   <div key={agent.id} className="animate-fadeInUp" style={{ animationDelay: `${index < 10 ? index * 30 : 0}ms` }}>
                     <AgentCard agent={agent} />
@@ -233,7 +233,9 @@ export function Agents() {
 
       <RegisterAgentModal 
         open={isRegisterOpen} 
-        onClose={() => setIsRegisterOpen(false)} 
+        onClose={() => setIsRegisterOpen(false)}
+        onSuccess={refetch}
+        uid={user?.id}
       />
     </div>
   );

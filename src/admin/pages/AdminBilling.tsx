@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase/client';
 import { Search, MoreHorizontal, Settings, Clock, CheckCircle } from 'lucide-react';
+import { getAdminEmail } from '../adminSession';
 
 export function AdminBilling() {
   const [loading, setLoading] = useState(true);
@@ -61,8 +62,7 @@ export function AdminBilling() {
     if (!confirm(`Are you sure you want to change ${overrideUser.email}'s plan to ${overridePlan}?`)) return;
 
     try {
-       const sessionRaw = sessionStorage.getItem('adminSession');
-       const adminEmail = sessionRaw ? JSON.parse(sessionRaw).email : 'admin';
+       const adminEmail = getAdminEmail('admin');
 
        await supabase.functions.invoke('admin-user-actions', {
          body: { action: 'update_plan', userId: overrideUser.id, payload: { plan: overridePlan, reason: overrideReason, duration: overrideDuration }, adminEmail }

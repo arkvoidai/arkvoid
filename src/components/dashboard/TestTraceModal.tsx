@@ -5,22 +5,26 @@ import { supabase } from '@/src/lib/supabase/client';
 import { useAuth } from '@/src/hooks/useAuth';
 import { CheckCircle, ArrowRight, Play, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
-
 import { createNotification } from '@/src/lib/notifications';
+import { useToast } from '@/src/components/ui/toast';
+import { getUserOrgId } from '@/src/lib/agents';
+import { toSafeErrorMessage } from '@/src/lib/async';
 
 interface TestTraceModalProps {
   open: boolean;
   onClose: () => void;
   agents: any[];
+  onSuccess?: () => void | Promise<void>;
 }
 
-export function TestTraceModal({ open, onClose, agents }: TestTraceModalProps) {
+export function TestTraceModal({ open, onClose, agents, onSuccess }: TestTraceModalProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [traceId, setTraceId] = useState('');
+  const [error, setError] = useState('');
   
   const [agentId, setAgentId] = useState(agents[0]?.id || '');
   const [actionLabel, setActionLabel] = useState('test_action');
@@ -36,9 +40,14 @@ export function TestTraceModal({ open, onClose, agents }: TestTraceModalProps) {
   if (!open) return null;
 
   const handleSend = async () => {
-    if (!user || !agentId) return;
+    if (!user || !agentId) {
+      setError('Select an agent before sending a test trace.');
+      return;
+    }
     setLoading(true);
+    setError('');
 
+    try {
     let score = 0;
     if (riskLevel === 'low') score = Math.floor(Math.random() * 21) + 5; // 5-25
     else if (riskLevel === 'medium') score = Math.floor(Math.random() * 26) + 40; // 40-65
@@ -47,19 +56,25 @@ export function TestTraceModal({ open, onClose, agents }: TestTraceModalProps) {
     const dur = Math.floor(Math.random() * 701) + 100; // 100-800
 
     const newTraceId = 'ark_' + crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+    const selectedAgent = agents.find(a => a.id === agentId);
+    const orgId = selectedAgent?.org_id || await getUserOrgId(user.id);
     
-    // Convert to action_logs expected shape based on other code
     const payload = {
       user_id: user.id,
+      org_id: orgId,
       agent_id: agentId,
+      session_id: crypto.randomUUID(),
       trace_id: newTraceId,
-      action_type: actionLabel,
+      model_provider: 'arkvoid',
+      model_name: 'test-console',
+      action_type: actionLabel.trim() || 'test_action',
       risk_score: score,
       latency_ms: dur,
       started_at: new Date().toISOString(),
       completed_at: new Date().toISOString(),
       status: 'completed',
-      metadata: { source: 'arkvoid_test_console', note: 'Sent from ARKVOID dashboard' }
+      environment: 'test',
+      metadata: { source: 'arkvoid_test_console', risk_level: riskLevel, note: 'Sent from ARKVOID dashboard' }
     };
 
     const { error } = await supabase.from('action_logs').insert(payload);
@@ -94,11 +109,22 @@ export function TestTraceModal({ open, onClose, agents }: TestTraceModalProps) {
         );
       }
       
+      await onSuccess?.();
+      toast.success('Test trace sent', 'Trace Explorer will refresh automatically.');
       setTimeout(() => {
         setLoading(false);
         setSuccess(true);
-      }, 500); // Wait a tiny bit for effect
+      }, 500);
     } else {
+      const message = toSafeErrorMessage(error, 'Failed to send test trace.');
+      setError(message);
+      toast.error('Test trace failed', message);
+      setLoading(false);
+    }
+    } catch (e) {
+      const message = toSafeErrorMessage(e, 'Failed to send test trace.');
+      setError(message);
+      toast.error('Test trace failed', message);
       setLoading(false);
     }
   };
@@ -118,6 +144,11 @@ export function TestTraceModal({ open, onClose, agents }: TestTraceModalProps) {
             <p className="text-[14px] text-[var(--text-secondary)] -mt-4">
               No code needed — we'll send it for you
             </p>
+            {error && (
+              <div className="rounded-lg border border-[var(--status-danger)]/30 bg-[var(--status-danger-dim)] px-3 py-2 text-[13px] text-[var(--status-danger)]">
+                {error}
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>
