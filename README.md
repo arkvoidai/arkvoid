@@ -1,19 +1,75 @@
-<div align="center">
-</div>
+# ARKVOID
 
-# Run and deploy your AI Studio app
+> Trust Layer for Autonomous AI Agents
 
-This contains everything you need to run your app locally.
+Modern AI infrastructure for monitoring, tracing, and securing autonomous AI systems in real time.
 
-View your app in AI Studio: https://ai.studio/apps/a55b3b7d-0ea6-4684-9d1d-477043d87b6a
+---
 
-## Run Locally
+![ARKVOID OG Image](./og-image.png)
 
-**Prerequisites:**  Node.js
+---
 
+## Overview
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+ARKVOID provides real-time observability and trust infrastructure for autonomous AI systems.
+
+Monitor:
+- AI agents
+- Tool calls
+- Sessions
+- Events
+- Decisions
+- Workflows
+
+Built for modern AI infrastructure and production AI systems.
+
+---
+
+# Features
+
+## Real-Time Agent Monitoring
+
+Track every AI action with full visibility.
+
+- Live observability
+- Agent execution tracing
+- Tool call monitoring
+- Event tracking
+- Workflow inspection
+
+---
+
+## AI Security & Trust Layer
+
+Infrastructure designed for trusted AI systems.
+
+- AI monitoring
+- Security visibility
+- Audit-ready architecture
+- Agent governance
+- Compliance-focused systems
+
+---
+
+## Modern AI Infrastructure
+
+Compatible with modern AI ecosystems.
+
+Supports:
+- OpenAI
+- Anthropic
+- Gemini
+- LangChain
+- MCP workflows
+- Autonomous agents
+- Multi-agent systems
+
+---
+
+# Quick Start
+
+## Install (Node.js)
+
+```bash
+npm install arkvoid
