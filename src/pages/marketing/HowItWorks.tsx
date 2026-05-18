@@ -15,6 +15,16 @@ function CodeTyping({ codeString }: { codeString: string }) {
     }, 20);
     return () => clearInterval(interval);
   }, [codeString]);
+
+  const highlighted = typed.split(/(\bimport\b|\bfrom\b|\bdef\b|\breturn\b|@trace)/g).map((part, index) => {
+    if (/^(import|from|def|return)$/.test(part)) {
+      return <span key={index} className="text-[#E8D5B0]">{part}</span>;
+    }
+    if (part === '@trace') {
+      return <span key={index} className="text-[#34D399]">{part}</span>;
+    }
+    return <React.Fragment key={index}>{part}</React.Fragment>;
+  });
   
   return (
     <div className="bg-[#111] border border-[rgba(255,255,255,0.1)] rounded-xl overflow-hidden shadow-2xl font-mono text-[11px] sm:text-[13px] text-[#A1A1A6]">
@@ -24,12 +34,13 @@ function CodeTyping({ codeString }: { codeString: string }) {
         <div className="w-3 h-3 rounded-full bg-[#27C93F]"></div>
       </div>
       <div className="p-6 whitespace-pre overflow-x-auto">
-        <span dangerouslySetInnerHTML={{ __html: typed.replace(/(\bimport\b|\bfrom\b|\bdef\b|\breturn\b)/g, '<span class="text-[#E8D5B0]">$1</span>').replace(/(@trace)/g, '<span class="text-[#34D399]">$1</span>') }} />
+        <span>{highlighted}</span>
         <span className="inline-block w-2 bg-white h-4 ml-1 animate-pulse align-middle"></span>
       </div>
     </div>
   );
 }
+
 
 export function HowItWorksPage() {
   const steps = [

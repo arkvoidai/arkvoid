@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 dotenv.config();
 
-const supabase = createClient(process.env.VITE_SUPABASE_URL || 'https://placeholder.supabase.co', process.env.VITE_SUPABASE_ANON_KEY || 'placeholder_key');
+const supabase = createClient(process.env.VITE_SUPABASE_URL || 'http://127.0.0.1:54321', process.env.VITE_SUPABASE_ANON_KEY || 'placeholder_key');
 
 async function test() {
   const { data: q1, error: e1 } = await supabase.from('action_logs').select('*').limit(1);

@@ -56,7 +56,7 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
       <div
         className={`absolute inset-0 bg-black/80 backdrop-blur-[4px] transition-opacity duration-200 ${
           open ? "opacity-100" : "opacity-0"
@@ -65,7 +65,7 @@ export const Modal: React.FC<ModalProps> = ({
       />
       
       <div
-        className={`relative flex flex-col w-full mx-4 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] transition-all duration-200 ${
+        className={`relative flex flex-col w-full max-h-[calc(100dvh-2rem)] bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] transition-all duration-200 ${
           open ? "scale-100 opacity-100" : "scale-95 opacity-0"
         } ${sizeClasses[size]}`}
       >
@@ -81,12 +81,12 @@ export const Modal: React.FC<ModalProps> = ({
           </button>
         </div>
 
-        <div className="p-4 overflow-y-auto max-h-[70vh] text-[var(--text-primary)]">
+        <div className="p-4 overflow-y-auto overscroll-contain text-[var(--text-primary)]">
           {children}
         </div>
 
         {footer && (
-          <div className="px-4 py-3 border-t border-[var(--border-subtle)] flex justify-end gap-3 bg-[#0c0c0c] rounded-b-[var(--radius-lg)]">
+          <div className="px-4 py-3 border-t border-[var(--border-subtle)] flex flex-col-reverse sm:flex-row sm:justify-end gap-3 bg-[#0c0c0c] rounded-b-[var(--radius-lg)] pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             {footer}
           </div>
         )}

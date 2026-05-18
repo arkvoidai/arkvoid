@@ -236,7 +236,7 @@ export function DashboardLayout() {
     }
   };
 
-  if (user && !isGuest && user.user_metadata?.first_login_complete !== true) {
+  if (user && !isGuest && user.user_metadata?.first_login_complete !== true && user.user_metadata?.onboarding_complete !== true) {
     return <WelcomeFlow />;
   }
 

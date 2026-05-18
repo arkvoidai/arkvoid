@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/src/lib/supabase/client';
 import { FileText, Download, Shield, Sparkles } from 'lucide-react';
+import { sanitizeHtml } from '@/src/lib/sanitize';
 import { Button } from '@/src/components/ui/button';
 
 export function SharedReport() {
@@ -110,7 +111,7 @@ export function SharedReport() {
              </div>
            </div>
 
-           <div className="prose prose-sm sm:prose-base max-w-none text-black prose-headings:text-black prose-a:text-blue-600 prose-strong:text-black" dangerouslySetInnerHTML={{ __html: report.content }} />
+           <div className="prose prose-sm sm:prose-base max-w-none text-black prose-headings:text-black prose-a:text-blue-600 prose-strong:text-black" dangerouslySetInnerHTML={{ __html: sanitizeHtml(report.content) }} />
            
            <div className="mt-16 pt-8 border-t border-gray-300 text-center text-xs text-gray-500 font-medium">
              Verified by ARKVOID Cryptographic Audit Trail<br />

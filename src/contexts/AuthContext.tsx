@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { useNavigate, useLocation } from 'react-router-dom';
 import supabase, { isSupabaseConfigured } from '../lib/supabase/client';
 import { getBrowserFingerprint, getOrCreateDeviceId } from '../lib/guestFingerprint';
+import { withTimeout } from '../lib/async';
 
 export interface AuthContextType {
   user: User | null;
@@ -15,7 +16,7 @@ export interface AuthContextType {
   showGuestExpiredModal: boolean;
   setShowGuestExpiredModal: (show: boolean) => void;
   signOut: () => Promise<void>;
-  signInWithOtp: (email: string, options?: { data?: any }) => Promise<void>;
+  signInWithOtp: (email: string, options?: { data?: any; emailRedirectTo?: string }) => Promise<void>;
   verifyOtp: (email: string, token: string) => Promise<void>;
   loginAsGuest: () => Promise<void>;
 }
@@ -65,7 +66,7 @@ const logUserLocation = async (userId: string) => {
       sessionStorage.setItem('location_logged', 'true');
     }
   } catch (e) {
-    console.error('Failed to log location:', e);
+    if (window.location.hostname === 'localhost') console.error('Failed to log location:', e);
   }
 };
 
@@ -80,6 +81,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   const navigate = useNavigate();
   const location = useLocation();
+  const userRef = useRef<User | null>(null);
+  const locationRef = useRef(location);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    locationRef.current = location;
+  }, [location]);
 
   const checkAdmin = (u: User | null) => {
     if (u?.email === 'manishtalukdar666@gmail.com' || u?.user_metadata?.is_super_admin) {
@@ -181,7 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       saveGuestSession(sess);
       navigate('/dashboard/overview');
     } catch (err) {
-      console.error('Guest login error:', err);
+      if (window.location.hostname === 'localhost') console.error('Guest login error:', err);
       // Fallback
       let sess = getGuestSession();
       if (!sess) {
@@ -217,7 +228,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: { session: supabaseSession }, error } = await supabase.auth.getSession();
       
       if (error) {
-        console.error("Auth session error:", error);
+        if (window.location.hostname === 'localhost') console.error("Auth session error:", error);
       }
       
       setSession(supabaseSession);
@@ -253,9 +264,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, supabaseSession) => {
-      if (_event === 'SIGNED_OUT' && user) {
+      if (_event === 'SIGNED_OUT' && userRef.current) {
          alert("Session expired. Please sign in to continue.");
-         navigate('/auth/login?returnUrl=' + encodeURIComponent(location.pathname + location.search));
+         const currentLocation = locationRef.current;
+         navigate('/auth/login?returnUrl=' + encodeURIComponent(currentLocation.pathname + currentLocation.search));
       }
       setSession(supabaseSession);
       setUser(supabaseSession?.user ?? null);
@@ -277,7 +289,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, [location.pathname, location.search, navigate, user]);
+  }, [navigate]);
 
   const signOut = async () => {
     if (isGuest) {
@@ -291,50 +303,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     navigate('/auth/login');
   };
 
-  const signInWithOtp = async (email: string, options?: { data?: any }) => {
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("Request timed out. Please check your network or adblocker.")), 8000)
-    );
-    
-    const signInPromise = supabase.auth.signInWithOtp({
-      email,
-      options: {
-        shouldCreateUser: true,
-        data: options?.data,
-      }
-    });
+  const signInWithOtp = async (email: string, options?: { data?: any; emailRedirectTo?: string }) => {
+    const redirectFromData = typeof options?.data?.email_redirect_to === 'string' ? options.data.email_redirect_to : undefined;
+    const { email_redirect_to: _emailRedirectTo, ...safeData } = options?.data || {};
 
-    try {
-      const { error } = await Promise.race([signInPromise, timeoutPromise]) as any;
-      if (error) throw error;
-    } catch (e: any) {
-      if (e.message?.includes('Request timed out')) {
-         throw e;
-      }
-      throw e;
-    }
+    const { error } = await withTimeout<{ error: Error | null }>(
+      supabase.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: options?.emailRedirectTo || redirectFromData || `${window.location.origin}/dashboard/overview`,
+          data: safeData,
+        }
+      }),
+      10_000,
+      "Request timed out. Please check your network and try again."
+    );
+
+    if (error) throw error;
   };
 
   const verifyOtp = async (email: string, token: string) => {
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("Verification timed out. Please check your network or adblocker.")), 8000)
-    );
-    
-    const verifyPromise = supabase.auth.verifyOtp({
-      email,
-      token,
-      type: 'email'
-    });
-    
-    try {
-      const { error } = await Promise.race([verifyPromise, timeoutPromise]) as any;
-      if (error) throw error;
-    } catch (e: any) {
-      if (e.message?.includes('timed out')) {
-         throw e;
-      }
-      throw e;
+    const normalizedToken = token.replace(/\D/g, '').slice(0, 6);
+    if (normalizedToken.length !== 6) {
+      throw new Error('Enter the 6-digit code from your email.');
     }
+
+    const { error } = await withTimeout<{ error: Error | null }>(
+      supabase.auth.verifyOtp({
+        email: email.trim().toLowerCase(),
+        token: normalizedToken,
+        type: 'email'
+      }),
+      10_000,
+      "Verification timed out. Please check your network and try again."
+    );
+
+    if (error) throw error;
   };
 
   return (

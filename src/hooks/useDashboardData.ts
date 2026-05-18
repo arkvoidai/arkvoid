@@ -87,35 +87,43 @@ export function useDashboardData() {
       const [tracesRes, agentsRes, alertsRes, recentRes, allAgentsRes, weekTracesRes, policiesRes, monthTracesRes] = await Promise.all([
         supabase.from('action_logs')
           .select('id', { count: 'exact', head: true })
+          .eq('user_id', uid)
           .gte('started_at', `${today}T00:00:00`),
         
         supabase.from('agents')
           .select('id', { count: 'exact', head: true })
+          .eq('user_id', uid)
           .eq('status', 'active'),
           
         supabase.from('alerts')
           .select('id', { count: 'exact', head: true })
+          .eq('user_id', uid)
           .in('severity', ['high', 'critical'])
           .gte('created_at', yesterday),
 
         supabase.from('action_logs')
           .select(`id, trace_id, agent_id, action_type, risk_score, latency_ms, input_hash, output_hash, started_at, status, agents:agent_id(name)`)
+          .eq('user_id', uid)
           .order('started_at', { ascending: false })
           .limit(10),
 
         supabase.from('agents')
           .select('*')
+          .eq('user_id', uid)
           .limit(5),
 
         supabase.from('action_logs')
           .select('risk_score', { count: 'exact', head: false })
+          .eq('user_id', uid)
           .gte('started_at', weekAgo),
           
         supabase.from('policies')
-          .select('id', { count: 'exact', head: true }),
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', uid),
 
         supabase.from('action_logs')
           .select('id', { count: 'exact', head: true })
+          .eq('user_id', uid)
           .gte('started_at', firstDayOfMonth)
       ]);
 

@@ -47,7 +47,7 @@ export function AdminUserDetail() {
       ] = await Promise.all([
         supabase.from('agents').select('*').eq('user_id', id),
         supabase.from('action_logs').select('*').eq('user_id', id).limit(50).order('created_at', { ascending: false }),
-        supabase.from('api_keys').select('*').eq('user_id', id)
+        supabase.from('api_keys').select('*').eq('created_by', id)
       ]);
 
       setAgents(a || []);

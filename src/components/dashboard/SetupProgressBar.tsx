@@ -29,7 +29,7 @@ export function SetupProgressBar({ agentsCount, openAgentModal, openTestTraceMod
     const checkStatus = async () => {
       setLoading(true);
       
-      const { count: keysCount } = await supabase.from('api_keys').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
+      const { count: keysCount } = await supabase.from('api_keys').select('id', { count: 'exact', head: true }).eq('created_by', user.id);
       const { count: trCount } = await supabase.from('action_logs').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
       
       setApiKeysCount(keysCount || 0);
@@ -63,7 +63,7 @@ export function SetupProgressBar({ agentsCount, openAgentModal, openTestTraceMod
           return prev + 1;
         });
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'api_keys', filter: `user_id=eq.${user.id}` }, () => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'api_keys', filter: `created_by=eq.${user.id}` }, () => {
         setApiKeysCount(prev => {
            if (agentsCount > 0 && tracesCount > 0 && prev === 0) {
               setTimeout(() => setDismissed(true), 5000);
