@@ -21,49 +21,48 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:site_name" content="ARKVOID" />
-    
-    <!-- Twitter/X Card -->
+
+    <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@ApeironAI" />
+    <meta name="twitter:url" content="https://arkvoid.cherazen.com" />
     <meta name="twitter:title" content="ARKVOID Trust Layer for Autonomous AI Agents" />
     <meta name="twitter:description" content="Modern AI Infrastructure for monitoring and securing autonomous AI systems." />
     <meta name="twitter:image" content="https://arkvoid.cherazen.com/og-image.png" />
 
-    <link rel="preload" href="https://arkvoid.cherazen.com/og-image.png" as="image" />
-
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/favicon.png" />
-    <link rel="manifest" href="/manifest.json" />
+    <!-- PWA -->
     <meta name="theme-color" content="#080808" />
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="ARKVOID" />
-    
+
+    <!-- BUG FIX: was <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+         /favicon.svg does NOT exist in /public. Only /favicon.png exists. -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Preload OG image -->
+    <link rel="preload" href="https://arkvoid.cherazen.com/og-image.png" as="image" />
+
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Structured Data -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "ARKVOID",
-      "applicationCategory": "BusinessApplication",
-      "description": "AI governance and compliance platform with cryptographic audit trails",
+      "description": "Trust Layer for Autonomous AI Agents — AI observability, compliance, and governance platform.",
       "url": "https://arkvoid.cherazen.com",
-      "author": {
-        "@type": "Organization",
-        "name": "ARKVOID Inc.",
-        "email": "heyarkvoid@gmail.com"
-      },
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      },
-      "operatingSystem": "Web",
-      "keywords": "AI governance, EU AI Act compliance, AI agent monitoring"
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web"
     }
     </script>
+
+    <!-- Razorpay -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   </head>
   <body>
@@ -71,4 +70,3 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
