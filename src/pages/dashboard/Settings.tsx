@@ -4,7 +4,7 @@ import { User, Briefcase, Bell, Shield, Blocks, CreditCard, AlertTriangle, Check
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { supabase } from '@/src/lib/supabase/client';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Modal } from '@/src/components/ui/modal';
 
 // Toggle Component
@@ -24,7 +24,10 @@ function Toggle({ active, onChange }: { active: boolean, onChange: (active: bool
 export function Settings() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('profile');
+  // BUG FIX: Read ?tab= from URL so /dashboard/settings?tab=billing
+  // (linked from sidebar upgrade warning and premium modal) opens billing directly.
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile');
   
   // Track workspace tab
   useEffect(() => {
@@ -96,7 +99,7 @@ export function Settings() {
              if (verifyData.success) {
                 // Refresh session or show success toast
                 await supabase.auth.refreshSession();
-                alert("🎉 You're now on the " + plan + " Plan!");
+                alert("ðŸŽ‰ You're now on the " + plan + " Plan!");
                 // Optionally update metadata context locally
              } else {
                 alert("Payment verification failed.");
@@ -461,7 +464,7 @@ export function Settings() {
                                  <div className="text-[13px] font-medium text-[var(--text-primary)] flex items-center gap-2">
                                     Current session
                                  </div>
-                                 <div className="text-[12px] text-[var(--text-tertiary)] mt-0.5">Chrome · Guwahati, India · Now</div>
+                                 <div className="text-[12px] text-[var(--text-tertiary)] mt-0.5">Chrome Â· Guwahati, India Â· Now</div>
                               </div>
                            </div>
                         </div>
@@ -472,7 +475,7 @@ export function Settings() {
                         <div className="bg-[var(--bg-card)] md:bg-[var(--bg-elevated)] border border-[var(--border-default)] md:border-[var(--border-subtle)] rounded-lg p-4">
                            <h4 className="text-[13px] font-medium text-[var(--text-primary)] mb-1">PassWordless Login</h4>
                            <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
-                              ARKVOID uses email verification codes — no password to change. Your account is secured by cryptographic email verification.
+                              ARKVOID uses email verification codes â€” no password to change. Your account is secured by cryptographic email verification.
                            </p>
                         </div>
                      </div>
@@ -485,7 +488,7 @@ export function Settings() {
                               </h4>
                               <p className="text-[13px] text-[var(--text-secondary)] mt-1">Add an extra layer of security to your account.</p>
                            </div>
-                           <Button variant="secondary" className="w-full md:w-auto" disabled>Waitlist · Coming Soon</Button>
+                           <Button variant="secondary" className="w-full md:w-auto" disabled>Waitlist Â· Coming Soon</Button>
                         </div>
                      </div>
                   </div>
@@ -517,7 +520,7 @@ export function Settings() {
                                  </p>
                              </div>
                              {user?.user_metadata?.plan && user.user_metadata.plan !== 'Free' ? (
-                               <Button variant="secondary" disabled className="shrink-0 w-full md:w-auto">Billing Portal · Coming Soon</Button>
+                               <Button variant="secondary" disabled className="shrink-0 w-full md:w-auto">Billing Portal Â· Coming Soon</Button>
                              ) : null}
                          </div>
 
@@ -694,7 +697,7 @@ export function Settings() {
       <Modal open={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} title="Delete your account?" size="sm">
          <div className="space-y-4 pt-2">
             <div className="bg-[var(--status-danger)]/10 border border-[var(--status-danger)]/20 rounded-lg p-4">
-               <p className="text-[13px] text-[var(--status-danger)] font-medium mb-3">⚠️ This will permanently delete:</p>
+               <p className="text-[13px] text-[var(--status-danger)] font-medium mb-3">âš ï¸ This will permanently delete:</p>
                <ul className="text-[13px] text-[var(--status-danger)]/80 space-y-1.5 pl-4 list-disc marker:text-[var(--status-danger)]/50">
                   <li>All registered agents</li>
                   <li>All system traces</li>
@@ -731,3 +734,4 @@ export function Settings() {
     </div>
   );
 }
+
