@@ -168,8 +168,8 @@ function CountUp({ end, duration = 1.5, startValue = 0, suffix = "" }: { end: nu
 }
 
 function HeroSection() {
-  const words1 = "Trust Layer for".split(" ");
-  const words2 = "Autonomous AI Agents".split(" ");
+  const words1 = "EU AI Act Compliance Layer".split(" ");
+const words2 = "for Autonomous Agents".split(" ");
   const [isDemoOpen, setIsDemoOpen] = useState(false);
 
   return (
