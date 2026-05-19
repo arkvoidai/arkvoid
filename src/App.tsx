@@ -186,9 +186,13 @@ function App() {
         <Route path="/og-preview" element={<OGImage />} />
 
         {/* Admin routing */}
-        <Route path="/admin/manish/nine-heaven/access-voidsoul" element={<AdminLogin />} />
+        {/* BUG FIX: Admin path moved to env variable VITE_ADMIN_PATH to avoid
+             exposing the URL in the public JS bundle. Set it in your .env:
+             VITE_ADMIN_PATH=admin/your-secret-path
+             Fallback keeps existing path so nothing breaks if var not set. */}
+        <Route path={`/${import.meta.env.VITE_ADMIN_PATH || 'admin/manish/nine-heaven/access-voidsoul'}`} element={<AdminLogin />} />
         
-        <Route path="/admin/manish/nine-heaven/access-voidsoul/*" element={<AdminAuthGuard><AdminLayout /></AdminAuthGuard>}>
+        <Route path={`/${import.meta.env.VITE_ADMIN_PATH || 'admin/manish/nine-heaven/access-voidsoul'}/*`} element={<AdminAuthGuard><AdminLayout /></AdminAuthGuard>}>
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="monitor" element={<AdminRealTimeMonitor />} />
@@ -210,6 +214,7 @@ function App() {
         </Route>
 
         <Route path="/admin/*" element={<Navigate to="/" replace />} />
+        <Route path="/admin/manish/*" element={<Navigate to="/" replace />} />
 
   {/* Protected Dashboard Routes */}
         <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
