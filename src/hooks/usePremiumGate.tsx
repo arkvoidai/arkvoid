@@ -23,19 +23,17 @@ export function PremiumGateProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
      if (isOpen && user && !isGuest) {
-        // Find urgency hooks dynamically when opened
         const fetchUrgency = async () => {
-           // check high risk traces
            const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
            const { data: riskTraces } = await supabase.from('action_logs').select('id').eq('user_id', user.id).gte('risk_score', 80).gte('started_at', weekAgo);
            if (riskTraces && riskTraces.length > 0) {
-              setUrgency({ type: 'risk', message: `⚠️ You have ${riskTraces.length} high-risk events that need monitoring.` });
+              setUrgency({ type: 'risk', message: `тЪая╕П You have ${riskTraces.length} high-risk events that need monitoring.` });
               return;
            }
 
            const { data: recentTraces } = await supabase.from('action_logs').select('id').eq('user_id', user.id).gte('started_at', new Date(Date.now() - 24 * 3600000).toISOString()).limit(1);
            if (!recentTraces || recentTraces.length === 0) {
-              setUrgency({ type: 'inactive', message: `😴 One of your agents may have stopped working.` });
+              setUrgency({ type: 'inactive', message: `ЁЯШ┤ One of your agents may have stopped working.` });
               return;
            }
         };
@@ -67,7 +65,6 @@ export function PremiumGateProvider({ children }: { children: ReactNode }) {
           
           {/* Modal */}
           <div className="relative w-full max-w-[560px] bg-[var(--bg-elevated)] border-t-[3px] border-[var(--accent-amber)] border-x border-b border-[var(--border-default)] rounded-xl shadow-[var(--shadow-lg)] overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Ambient Background Glow */}
             <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[400px] h-[400px] rounded-full" 
                  style={{ background: 'radial-gradient(circle 200px at 50% 0%, rgba(245,158,11,0.08), transparent)', pointerEvents: 'none' }} />
             
@@ -121,7 +118,7 @@ export function PremiumGateProvider({ children }: { children: ReactNode }) {
 
               <div className="text-center mb-6">
                 <div className="text-2xl font-bold text-white mb-1">$19<span className="text-[14px] text-[var(--text-secondary)] font-normal">/month</span></div>
-                <div className="text-[12px] text-[var(--text-secondary)]">14-day free trial · Cancel anytime</div>
+                <div className="text-[12px] text-[var(--text-secondary)]">14-day free trial ┬╖ Cancel anytime</div>
               </div>
 
               <div className="w-full space-y-3">
@@ -137,7 +134,9 @@ export function PremiumGateProvider({ children }: { children: ReactNode }) {
                   <Button 
                     className="w-full h-[48px] bg-[var(--accent-amber)] hover:bg-[var(--accent-amber-hover)] text-black font-bold text-[15px] rounded-lg" 
                     size="lg" 
-                    onClick={() => { setIsOpen(false); navigate('/dashboard/settings/billing'); }}
+                    // BUG FIX: was navigate('/dashboard/settings/billing') which 404s.
+                    // Route doesn't exist. Settings uses tab state. Use ?tab=billing param.
+                    onClick={() => { setIsOpen(false); navigate('/dashboard/settings?tab=billing'); }}
                   >
                     Start Free Trial &rarr;
                   </Button>
