@@ -95,7 +95,8 @@ export function DashboardLayout() {
   const [cmdOpen, setCmdOpen] = useState(false);
   const { progress, visible } = useRouteProgress();
   const isOnline = useNetworkStatus();
-  const { showGuestExpiredModal } = useAuth();
+  // BUG FIX: showGuestExpiredModal removed from here — GlobalGuestModal in App.tsx
+  // already handles this globally. Having it in both caused two overlapping modals.
   
   // Custom toast notification handler
   const [liveToast, setLiveToast] = useState<{ id: string, title: string, message: string, type: string, link: string } | null>(null);
@@ -306,7 +307,7 @@ export function DashboardLayout() {
             </div>
             {(dashboardData?.monthTraces || 0) > 9500 && (
               <div className="mt-2 text-[10px] text-[var(--status-danger)] font-medium text-center">
-                ⚠️ Almost at limit. <Link to="/dashboard/settings/billing" className="underline">Upgrade</Link>
+                ⚠️ Almost at limit. <Link to="/dashboard/settings?tab=billing" className="underline">Upgrade</Link>
               </div>
             )}
           </div>
@@ -568,7 +569,7 @@ export function DashboardLayout() {
             </div>
             {(dashboardData?.monthTraces || 0) > 9500 && (
               <div className="mt-2 text-[11px] text-[var(--status-danger)] font-medium text-center">
-                ⚠️ Almost at limit. <Link to="/dashboard/settings/billing" className="underline">Upgrade</Link>
+                ⚠️ Almost at limit. <Link to="/dashboard/settings?tab=billing" className="underline">Upgrade</Link>
               </div>
             )}
           </div>
@@ -631,33 +632,7 @@ export function DashboardLayout() {
         </div>
       )}
 
-      {showGuestExpiredModal && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[var(--bg-elevated)] border border-[var(--border-default)] shadow-2xl rounded-2xl w-full max-w-md p-6 text-center animate-in zoom-in-95 duration-200">
-             <div className="w-16 h-16 bg-[var(--accent-amber)]/10 text-[var(--accent-amber)] rounded-full flex items-center justify-center mx-auto mb-4 border border-[var(--accent-amber)]/20">
-                <Activity className="w-8 h-8" />
-             </div>
-             <h3 className="text-[20px] font-bold text-white mb-2">Guest Access Expired</h3>
-             <p className="text-[14px] text-[var(--text-secondary)] mb-6 leading-relaxed">
-               Your guest access has expired. Create a free account to continue using ARKVOID and unlock all features.
-             </p>
-             <div className="flex flex-col gap-3">
-               <Link 
-                 to="/auth/signup" 
-                 className="w-full bg-[var(--accent-amber)] hover:bg-[var(--accent-amber-hover)] text-black font-semibold text-[14px] py-2.5 rounded-lg transition-colors flex justify-center items-center gap-2"
-               >
-                 Create Account <ArrowUpRight className="w-4 h-4" />
-               </Link>
-               <Link 
-                 to="/auth/login" 
-                 className="w-full bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-white border border-[var(--border-default)] font-semibold text-[14px] py-2.5 rounded-lg transition-colors flex justify-center items-center"
-               >
-                 Login
-               </Link>
-             </div>
-          </div>
-        </div>
-      )}
+      {/* BUG FIX: Duplicate GuestExpiredModal removed. GlobalGuestModal in App.tsx handles this. */}
 
       <ArkvoidChat />
     </div>
@@ -671,4 +646,4 @@ function SearchIcon(props: any) {
       <path d="m21 21-4.3-4.3" />
     </svg>
   );
-}
+      }
