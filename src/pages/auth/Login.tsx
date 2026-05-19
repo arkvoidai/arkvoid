@@ -23,6 +23,8 @@ export function Login() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const returnUrl = searchParams.get('returnUrl') || '/dashboard/overview';
+  // BUG FIX: Show session-expired banner when redirected from AuthContext SIGNED_OUT
+  const sessionExpired = searchParams.get('reason') === 'session_expired';
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,6 +88,14 @@ export function Login() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-[#f5f5f7] flex flex-col items-center justify-center p-6 font-sans relative overflow-hidden">
+      {/* BUG FIX: Session-expired notice replaces the removed alert() in AuthContext */}
+      {sessionExpired && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 w-full max-w-sm z-10">
+          <div className="mx-4 bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[13px] font-medium px-4 py-2.5 rounded-lg text-center">
+            Your session expired. Please sign in again.
+          </div>
+        </div>
+      )}
       {/* Subtle Background Pattern */}
       <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)' }}></div>
       <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none mix-blend-screen"></div>
