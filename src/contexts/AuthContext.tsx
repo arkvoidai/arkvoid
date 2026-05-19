@@ -147,7 +147,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .single();
           gs = newGs;
         } else {
-          // Check limits
           if (existing.usage_count >= 3 || existing.expired) {
              setShowGuestExpiredModal(true);
              setLoading(false);
@@ -193,7 +192,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       navigate('/dashboard/overview');
     } catch (err) {
       if (window.location.hostname === 'localhost') console.error('Guest login error:', err);
-      // Fallback
       let sess = getGuestSession();
       if (!sess) {
          sess = { isGuest: true, sessionCount: 1, maxSessions: 3, startedAt: new Date().toISOString() };
@@ -239,14 +237,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsGuest(false);
         logUserLocation(supabaseSession.user.id);
         
-        // If we previously had a guest session in DB, link it to the user.
         if (sess && sess.dbId) {
            await supabase.from('guest_sessions').update({
               converted_to_user_id: supabaseSession.user.id
            }).eq('id', sess.dbId);
         }
       } else if (sess) {
-        // Enforce limit checking on load if guest
         if (sess.sessionCount > 3) {
            localStorage.removeItem(GUEST_KEY);
            setIsGuest(false);
@@ -264,11 +260,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, supabaseSession) => {
+      // BUG FIX: Removed `alert("Session expired...")` which blocked the UI thread,
+      // interrupted any in-progress work, and showed a jarring native browser dialog.
+      // Now we simply navigate to login with a `reason` param so the login page can
+      // optionally show a friendly "Your session expired, please sign in again." message.
       if (_event === 'SIGNED_OUT' && userRef.current) {
-         alert("Session expired. Please sign in to continue.");
-         const currentLocation = locationRef.current;
-         navigate('/auth/login?returnUrl=' + encodeURIComponent(currentLocation.pathname + currentLocation.search));
+        const currentLocation = locationRef.current;
+        navigate(
+          '/auth/login?reason=session_expired&returnUrl=' +
+            encodeURIComponent(currentLocation.pathname + currentLocation.search)
+        );
       }
+
       setSession(supabaseSession);
       setUser(supabaseSession?.user ?? null);
       if (supabaseSession?.user) {
@@ -369,5 +372,5 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-            }
-        
+      }
+      
