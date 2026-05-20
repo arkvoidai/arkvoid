@@ -1,12 +1,11 @@
-// BUG FIX: POST /api/create-order was defined only in Express server.ts.
-// On Vercel static deployment that server never runs, so the billing flow broke silently
-// (Settings.tsx called this endpoint → 404 → payment modal crashed).
-// This Vercel serverless function replaces it.
+// api/create-order.ts
+// Vercel serverless function — creates a Razorpay order for plan upgrades.
+// UI shows prices in USD; this endpoint converts to INR for Razorpay.
 
 import Razorpay from 'razorpay';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 function getSupabase() {
@@ -16,15 +15,10 @@ function getSupabase() {
 
 async function requireAuth(req: any): Promise<{ id: string; email: string } | null> {
   const authHeader = req.headers.authorization;
-  if (!authHeader || authHeader === 'Bearer undefined') return null;
+  if (!authHeader || authHeader === 'Bearer undefined' || authHeader === 'Bearer null') return null;
 
   const token = authHeader.split(' ')[1];
   if (!token) return null;
-
-  // Guest fallback
-  if (token === 'guest') {
-    return { id: 'guest', email: 'guest@arkvoid.app' };
-  }
 
   const supabase = getSupabase();
   if (!supabase) return null;
@@ -33,6 +27,15 @@ async function requireAuth(req: any): Promise<{ id: string; email: string } | nu
   if (error || !user) return null;
   return { id: user.id, email: user.email || '' };
 }
+
+// ─── Plan pricing (USD) ───────────────────────────────────────────────────────
+// Plan names align with PLAN_LIMITS in src/lib/constants.ts
+// Monthly and annual (total per year) prices in USD.
+const PLAN_PRICES: Record<string, { monthly: number; annual: number }> = {
+  PRO:        { monthly: 24,   annual: 228  },  // $19/mo × 12
+  TEAM:       { monthly: 99,   annual: 948  },  // $79/mo × 12
+  ENTERPRISE: { monthly: 999,  annual: 9999 },  // contact sales, fallback
+};
 
 export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -51,31 +54,31 @@ export default async function handler(req: any, res: any) {
 
   const user = await requireAuth(req);
   if (!user) {
-    res.status(401).json({ error: 'Unauthorized' });
+    res.status(401).json({ error: 'Unauthorized — please sign in.' });
     return;
   }
 
-  const keyId = process.env.VITE_RAZORPAY_KEY_ID || '';
+  const keyId = process.env.VITE_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || '';
   const keySecret = process.env.RAZORPAY_KEY_SECRET || '';
 
   if (!keyId || !keySecret) {
-    res.status(500).json({ error: 'Razorpay not configured on server' });
+    console.error('Razorpay keys missing from environment');
+    res.status(500).json({ error: 'Payment gateway not configured on server.' });
     return;
   }
 
   const { plan, billing_cycle } = req.body || {};
 
-  const USD_TO_INR = 95.93;
-  let amountUsd = 0;
-  if (plan === 'Growth') amountUsd = billing_cycle === 'annual' ? 180 : 19;
-  else if (plan === 'Scale') amountUsd = billing_cycle === 'annual' ? 750 : 79;
-  else if (plan === 'Enterprise') amountUsd = 2000;
-
-  if (amountUsd === 0) {
-    res.status(400).json({ error: 'Invalid plan' });
+  if (!plan || !PLAN_PRICES[plan]) {
+    res.status(400).json({ error: `Invalid plan "${plan}". Valid values: PRO, TEAM, ENTERPRISE.` });
     return;
   }
 
+  const prices = PLAN_PRICES[plan];
+  const amountUsd = billing_cycle === 'annual' ? prices.annual : prices.monthly;
+
+  // Conversion rate from env (set VITE_USD_TO_INR in your .env)
+  const USD_TO_INR = parseFloat(process.env.VITE_USD_TO_INR || '95.93');
   const amountInPaise = Math.round(amountUsd * USD_TO_INR * 100);
 
   try {
@@ -83,21 +86,24 @@ export default async function handler(req: any, res: any) {
     const order = await razorpay.orders.create({
       amount: amountInPaise,
       currency: 'INR',
-      receipt: `order_${user.id}_${Date.now()}`,
+      receipt: `arkvoid_${user.id.slice(0, 8)}_${Date.now()}`,
       notes: {
         user_id: user.id,
+        user_email: user.email,
         plan,
         billing_cycle: billing_cycle || 'monthly',
+        amount_usd: String(amountUsd),
       },
     });
 
     res.status(200).json({
       order_id: order.id,
-      amount: order.amount,
+      amount: order.amount,          // in paise, used by Razorpay SDK
       currency: 'INR',
+      display_amount_usd: amountUsd, // shown in UI description
     });
   } catch (e: any) {
-    console.error('Razorpay order error:', e);
-    res.status(500).json({ error: e?.message || 'Failed to create order' });
+    console.error('Razorpay order creation error:', e);
+    res.status(500).json({ error: e?.message || 'Failed to create payment order.' });
   }
 }
