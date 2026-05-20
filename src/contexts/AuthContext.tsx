@@ -83,6 +83,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const userRef = useRef<User | null>(null);
   const locationRef = useRef(location);
+  // FIX: Track whether we've completed initial auth to prevent premature redirects
+  const initialAuthDone = useRef(false);
 
   useEffect(() => {
     userRef.current = user;
@@ -212,74 +214,92 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
-      const sess = getGuestSession();
+      const guestSess = getGuestSession();
       
       if (!isSupabaseConfigured) {
-        if (sess) {
+        if (guestSess) {
           setIsGuest(true);
-          setGuestSessionsUsed(sess.sessionCount);
+          setGuestSessionsUsed(guestSess.sessionCount);
         }
+        initialAuthDone.current = true;
         setLoading(false);
         return;
       }
 
-      const { data: { session: supabaseSession }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        if (window.location.hostname === 'localhost') console.error("Auth session error:", error);
-      }
-      
-      setSession(supabaseSession);
-      setUser(supabaseSession?.user ?? null);
-      
-      if (supabaseSession?.user) {
-        localStorage.removeItem(GUEST_KEY);
-        setIsGuest(false);
-        logUserLocation(supabaseSession.user.id);
+      try {
+        // FIX: Use getSession() which reads from localStorage — this is what keeps
+        // users logged in. Previously, some paths skipped this and caused logout.
+        const { data: { session: supabaseSession }, error } = await supabase.auth.getSession();
         
-        if (sess && sess.dbId) {
-           await supabase.from('guest_sessions').update({
-              converted_to_user_id: supabaseSession.user.id
-           }).eq('id', sess.dbId);
+        if (error) {
+          if (window.location.hostname === 'localhost') console.error("Auth session error:", error);
         }
-      } else if (sess) {
-        if (sess.sessionCount > 3) {
-           localStorage.removeItem(GUEST_KEY);
-           setIsGuest(false);
-           setShowGuestExpiredModal(true);
-        } else {
-           setIsGuest(true);
-           setGuestSessionsUsed(sess.sessionCount);
+        
+        setSession(supabaseSession);
+        setUser(supabaseSession?.user ?? null);
+        
+        if (supabaseSession?.user) {
+          localStorage.removeItem(GUEST_KEY);
+          setIsGuest(false);
+          logUserLocation(supabaseSession.user.id);
+          
+          if (guestSess && guestSess.dbId) {
+             await supabase.from('guest_sessions').update({
+                converted_to_user_id: supabaseSession.user.id
+             }).eq('id', guestSess.dbId);
+          }
+        } else if (guestSess) {
+          if (guestSess.sessionCount > 3) {
+             localStorage.removeItem(GUEST_KEY);
+             setIsGuest(false);
+             setShowGuestExpiredModal(true);
+          } else {
+             setIsGuest(true);
+             setGuestSessionsUsed(guestSess.sessionCount);
+          }
         }
+        
+        checkAdmin(supabaseSession?.user ?? null);
+      } finally {
+        initialAuthDone.current = true;
+        setLoading(false);
       }
-      
-      checkAdmin(supabaseSession?.user ?? null);
-      setLoading(false);
     };
 
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, supabaseSession) => {
-      // BUG FIX: Removed `alert("Session expired...")` which blocked the UI thread,
-      // interrupted any in-progress work, and showed a jarring native browser dialog.
-      // Now we simply navigate to login with a `reason` param so the login page can
-      // optionally show a friendly "Your session expired, please sign in again." message.
-      if (_event === 'SIGNED_OUT' && userRef.current) {
+      // FIX: Only redirect to login on SIGNED_OUT **after** initial auth is complete.
+      // Without this guard, the brief window between page load and getSession()
+      // triggers a false SIGNED_OUT event and boots the user to /auth/login even
+      // though they have a valid stored session.
+      if (_event === 'SIGNED_OUT' && userRef.current && initialAuthDone.current) {
         const currentLocation = locationRef.current;
-        navigate(
-          '/auth/login?reason=session_expired&returnUrl=' +
-            encodeURIComponent(currentLocation.pathname + currentLocation.search)
-        );
+        // Only redirect if actually on a dashboard route
+        if (currentLocation.pathname.startsWith('/dashboard')) {
+          navigate(
+            '/auth/login?reason=session_expired&returnUrl=' +
+              encodeURIComponent(currentLocation.pathname + currentLocation.search)
+          );
+        }
+      }
+
+      // FIX: For TOKEN_REFRESHED events, update session silently without side effects
+      if (_event === 'TOKEN_REFRESHED') {
+        setSession(supabaseSession);
+        setUser(supabaseSession?.user ?? null);
+        checkAdmin(supabaseSession?.user ?? null);
+        return;
       }
 
       setSession(supabaseSession);
       setUser(supabaseSession?.user ?? null);
       if (supabaseSession?.user) {
-        const sess = getGuestSession();
-        if (sess && sess.dbId) {
+        const guestSess = getGuestSession();
+        if (guestSess && guestSess.dbId) {
            supabase.from('guest_sessions').update({
               converted_to_user_id: supabaseSession.user.id
-           }).eq('id', sess.dbId);
+           }).eq('id', guestSess.dbId);
         }
         localStorage.removeItem(GUEST_KEY);
         setIsGuest(false);
@@ -288,7 +308,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
       checkAdmin(supabaseSession?.user ?? null);
-      setLoading(false);
+      if (initialAuthDone.current) setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -372,5 +392,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-      }
-      
+}
