@@ -1,3 +1,8 @@
+// src/App.tsx
+// FIX: Admin route path reads from VITE_ADMIN_PATH env variable.
+// The path is no longer duplicated as a hardcoded string in two places,
+// which previously caused mismatches when changing the secret URL.
+
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
@@ -29,7 +34,6 @@ const ApiKeys = lazy(() => import('./pages/dashboard/ApiKeys').then(m => ({ defa
 const Integrations = lazy(() => import('./pages/dashboard/Integrations').then(m => ({ default: m.Integrations })));
 
 import { useAuth } from './hooks/useAuth';
-
 import { Pricing } from './pages/marketing/Pricing';
 import { About } from './pages/marketing/About';
 import { Privacy } from './pages/marketing/Privacy';
@@ -44,95 +48,103 @@ import { BlogArticle } from './pages/marketing/BlogArticle';
 import { AuthProvider } from './contexts/AuthContext';
 import { SharedReport } from './pages/marketing/SharedReport';
 import { OGImage } from './pages/OGImage';
-
 import { PremiumGateProvider } from './hooks/usePremiumGate';
-
 import { FeatureFlagProvider } from './hooks/useFeatureFlags';
 import { ErrorTracker } from './hooks/ErrorTracker';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/ui/toast';
-
 import { AdminLogin } from './admin/AdminLogin';
 import { AdminLayout } from './admin/AdminLayout';
 import { AdminAuthGuard } from './admin/AdminAuthGuard';
-import { 
+import {
   AdminDashboard, AdminAnalytics, AdminRealTimeMonitor, AdminUsers, AdminUserDetail,
   AdminUserLocations, AdminSubscriptions, AdminAgentsMonitor, AdminTraceAnalytics,
   AdminAPIUsage, AdminRevenue, AdminBilling, AdminLeads, AdminDeployments,
-  AdminErrorLogs, AdminFeatureFlags, AdminSettings
+  AdminErrorLogs, AdminFeatureFlags, AdminSettings,
 } from './admin/AdminPagesPlaceholder';
-
-
 import { Features } from './pages/marketing/Features';
 import { HowItWorksPage } from './pages/marketing/HowItWorks';
 
-// Generic Skeleton for Suspense fallback
+// Single source of truth for the admin secret path
+const ADMIN_PATH = import.meta.env.VITE_ADMIN_PATH || 'admin/manish/nine-heaven/access-voidsoul';
+
 function PageSkeleton() {
   return (
     <div className="p-8 space-y-6">
       <div className="flex gap-4">
-        <div className="h-20 w-48 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] skeleton animate-fadeInUp"></div>
-        <div className="h-20 w-48 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] skeleton animate-fadeInUp" style={{ animationDelay: '30ms' }}></div>
+        <div className="h-20 w-48 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] skeleton animate-fadeInUp" />
+        <div className="h-20 w-48 bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] skeleton animate-fadeInUp" style={{ animationDelay: '30ms' }} />
       </div>
-      <div className="h-[400px] w-full bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] skeleton animate-fadeInUp" style={{ animationDelay: '60ms' }}></div>
+      <div className="h-[400px] w-full bg-[var(--bg-elevated)] rounded-xl border border-[var(--border-default)] skeleton animate-fadeInUp" style={{ animationDelay: '60ms' }} />
     </div>
   );
 }
 
-// Protected Route wrapper
-function ProtectedRoute({ children, requireAdmin = false, requireUser = false }: { children: React.ReactNode, requireAdmin?: boolean, requireUser?: boolean }) {
+function ProtectedRoute({ children, requireAdmin = false, requireUser = false }: {
+  children: React.ReactNode;
+  requireAdmin?: boolean;
+  requireUser?: boolean;
+}) {
   const { user, loading, isAdmin, isGuest } = useAuth();
   const location = useLocation();
-  
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]"><div className="animate-spin h-8 w-8 border-[3px] border-[rgba(255,255,255,0.2)] border-t-[var(--text-primary)] rounded-full" /></div>;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
+        <div className="animate-spin h-8 w-8 border-[3px] border-[rgba(255,255,255,0.2)] border-t-[var(--text-primary)] rounded-full" />
+      </div>
+    );
+  }
+
   if (!user && !isGuest) {
     const returnUrl = encodeURIComponent(location.pathname + location.search);
     return <Navigate to={`/auth/login?returnUrl=${returnUrl}`} replace />;
   }
   if (requireUser && isGuest) return <Navigate to="/dashboard/overview" replace />;
   if (requireAdmin && !isAdmin) return <Navigate to="/dashboard/overview" replace />;
-  
+
   return <>{children}</>;
 }
 
 function ScrollToTop() {
   const { pathname } = useLocation();
-
-  React.useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
-
+  React.useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   return null;
 }
 
 function GlobalGuestModal() {
   const { showGuestExpiredModal } = useAuth();
   if (!showGuestExpiredModal) return null;
-  
+
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-[var(--bg-elevated)] border border-[var(--border-default)] shadow-2xl rounded-2xl w-full max-w-md p-6 text-center animate-in zoom-in-95 duration-200">
-          <div className="w-16 h-16 bg-[var(--accent-amber)]/10 text-[var(--accent-amber)] rounded-full flex items-center justify-center mx-auto mb-4 border border-[var(--accent-amber)]/20">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          </div>
-          <h3 className="text-[20px] font-bold text-white mb-2">Guest Access Expired</h3>
-          <p className="text-[14px] text-[var(--text-secondary)] mb-6 leading-relaxed">
-            Your guest access has expired. Create a free account to continue using ARKVOID and unlock all features.
-          </p>
-          <div className="flex flex-col gap-3">
-            <Link 
-              to="/auth/signup" 
-              className="w-full bg-[var(--accent-amber)] hover:bg-[var(--accent-amber-hover)] text-black font-semibold text-[14px] py-2.5 rounded-lg transition-colors flex justify-center items-center gap-2"
-            >
-              Create Account <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><path d="M7 17 17 7"/><path d="M7 7h10v10"/></svg>
-            </Link>
-            <Link 
-              to="/auth/login" 
-              className="w-full bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-white border border-[var(--border-default)] font-semibold text-[14px] py-2.5 rounded-lg transition-colors flex justify-center items-center"
-            >
-              Login
-            </Link>
-          </div>
+        <div className="w-16 h-16 bg-[var(--accent-amber)]/10 text-[var(--accent-amber)] rounded-full flex items-center justify-center mx-auto mb-4 border border-[var(--accent-amber)]/20">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-8 h-8">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </svg>
+        </div>
+        <h3 className="text-[20px] font-bold text-white mb-2">Guest Access Expired</h3>
+        <p className="text-[14px] text-[var(--text-secondary)] mb-6 leading-relaxed">
+          Your guest access has expired. Create a free account to continue using ARKVOID.
+        </p>
+        <div className="flex flex-col gap-3">
+          <Link
+            to="/auth/signup"
+            className="w-full bg-[var(--accent-amber)] hover:bg-[var(--accent-amber-hover)] text-black font-semibold text-[14px] py-2.5 rounded-lg transition-colors flex justify-center items-center gap-2"
+          >
+            Create Free Account
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <path d="M7 17 17 7" /><path d="M7 7h10v10" />
+            </svg>
+          </Link>
+          <Link
+            to="/auth/login"
+            className="w-full bg-[var(--bg-card)] hover:bg-[var(--bg-hover)] text-white border border-[var(--border-default)] font-semibold text-[14px] py-2.5 rounded-lg transition-colors flex justify-center items-center"
+          >
+            Login
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -148,102 +160,107 @@ function App() {
         <AuthProvider>
           <ErrorTracker />
           <FeatureFlagProvider>
-          <ToastProvider>
-          <PremiumGateProvider>
-            <GlobalGuestModal />
-            <ErrorBoundary>
-            <Suspense fallback={<PageSkeleton />}>
-            <Routes>
-          <Route element={<MarketingLayout />}>
-          <Route path="/" element={<Home />} />
-          <Route path="/features" element={<Features />} />
-          <Route path="/how-it-works" element={<HowItWorksPage />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="/docs" element={<Docs />} />
-          <Route path="/blog" element={<Blog />} />
-          <Route path="/blog/:slug" element={<BlogArticle />} />
-          <Route path="/security" element={<Security />} />
-          <Route path="/dpa" element={<Dpa />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/terms" element={<Terms />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/status" element={<StatusPage />} />
-        </Route>
+            <ToastProvider>
+              <PremiumGateProvider>
+                <GlobalGuestModal />
+                <ErrorBoundary>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <Routes>
+                      {/* Marketing */}
+                      <Route element={<MarketingLayout />}>
+                        <Route path="/" element={<Home />} />
+                        <Route path="/features" element={<Features />} />
+                        <Route path="/how-it-works" element={<HowItWorksPage />} />
+                        <Route path="/pricing" element={<Pricing />} />
+                        <Route path="/docs" element={<Docs />} />
+                        <Route path="/blog" element={<Blog />} />
+                        <Route path="/blog/:slug" element={<BlogArticle />} />
+                        <Route path="/security" element={<Security />} />
+                        <Route path="/dpa" element={<Dpa />} />
+                        <Route path="/about" element={<About />} />
+                        <Route path="/privacy" element={<Privacy />} />
+                        <Route path="/terms" element={<Terms />} />
+                        <Route path="/contact" element={<Contact />} />
+                        <Route path="/status" element={<StatusPage />} />
+                      </Route>
 
-        <Route element={<AuthLayout />}>
-          <Route path="/auth/login" element={<Login />} />
-          <Route path="/auth/signup" element={<Signup />} />
-          <Route path="/signup" element={<Navigate to="/auth/signup" replace />} />
-          <Route path="/login" element={<Navigate to="/auth/login" replace />} />
-          <Route path="/auth/verify" element={<VerifyOtp />} />
-          <Route path="/verify-otp" element={<Navigate to="/auth/verify" replace />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/auth/github/callback" element={<GitHubCallback />} />
-        </Route>
-        
-        <Route path="/report/:token" element={<SharedReport />} />
-        <Route path="/og-preview" element={<OGImage />} />
+                      {/* Auth */}
+                      <Route element={<AuthLayout />}>
+                        <Route path="/auth/login" element={<Login />} />
+                        <Route path="/auth/signup" element={<Signup />} />
+                        <Route path="/signup" element={<Navigate to="/auth/signup" replace />} />
+                        <Route path="/login" element={<Navigate to="/auth/login" replace />} />
+                        <Route path="/auth/verify" element={<VerifyOtp />} />
+                        <Route path="/verify-otp" element={<Navigate to="/auth/verify" replace />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        <Route path="/auth/github/callback" element={<GitHubCallback />} />
+                      </Route>
 
-        {/* Admin routing */}
-        {/* BUG FIX: Admin path moved to env variable VITE_ADMIN_PATH to avoid
-             exposing the URL in the public JS bundle. Set it in your .env:
-             VITE_ADMIN_PATH=admin/your-secret-path
-             Fallback keeps existing path so nothing breaks if var not set. */}
-        <Route path={`/${import.meta.env.VITE_ADMIN_PATH || 'admin/manish/nine-heaven/access-voidsoul'}`} element={<AdminLogin />} />
-        
-        <Route path={`/${import.meta.env.VITE_ADMIN_PATH || 'admin/manish/nine-heaven/access-voidsoul'}/*`} element={<AdminAuthGuard><AdminLayout /></AdminAuthGuard>}>
-          <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="analytics" element={<AdminAnalytics />} />
-          <Route path="monitor" element={<AdminRealTimeMonitor />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="users/:id" element={<AdminUserDetail />} />
-          <Route path="locations" element={<AdminUserLocations />} />
-          <Route path="subscriptions" element={<AdminSubscriptions />} />
-          <Route path="agents" element={<AdminAgentsMonitor />} />
-          <Route path="traces" element={<AdminTraceAnalytics />} />
-          <Route path="api-usage" element={<AdminAPIUsage />} />
-          <Route path="revenue" element={<AdminRevenue />} />
-          <Route path="billing" element={<AdminBilling />} />
-          <Route path="leads" element={<AdminLeads />} />
-          <Route path="deployments" element={<AdminDeployments />} />
-          <Route path="errors" element={<AdminErrorLogs />} />
-          <Route path="features" element={<AdminFeatureFlags />} />
-          <Route path="settings" element={<AdminSettings />} />
-          <Route path="" element={<Navigate to="dashboard" replace />} />
-        </Route>
+                      <Route path="/report/:token" element={<SharedReport />} />
+                      <Route path="/og-preview" element={<OGImage />} />
 
-        <Route path="/admin/*" element={<Navigate to="/" replace />} />
-        <Route path="/admin/manish/*" element={<Navigate to="/" replace />} />
+                      {/* Admin — secret URL from env */}
+                      <Route path={`/${ADMIN_PATH}`} element={<AdminLogin />} />
+                      <Route
+                        path={`/${ADMIN_PATH}/*`}
+                        element={
+                          <AdminAuthGuard>
+                            <AdminLayout />
+                          </AdminAuthGuard>
+                        }
+                      >
+                        <Route path="dashboard" element={<AdminDashboard />} />
+                        <Route path="analytics" element={<AdminAnalytics />} />
+                        <Route path="monitor" element={<AdminRealTimeMonitor />} />
+                        <Route path="users" element={<AdminUsers />} />
+                        <Route path="users/:id" element={<AdminUserDetail />} />
+                        <Route path="locations" element={<AdminUserLocations />} />
+                        <Route path="subscriptions" element={<AdminSubscriptions />} />
+                        <Route path="agents" element={<AdminAgentsMonitor />} />
+                        <Route path="traces" element={<AdminTraceAnalytics />} />
+                        <Route path="api-usage" element={<AdminAPIUsage />} />
+                        <Route path="revenue" element={<AdminRevenue />} />
+                        <Route path="billing" element={<AdminBilling />} />
+                        <Route path="leads" element={<AdminLeads />} />
+                        <Route path="deployments" element={<AdminDeployments />} />
+                        <Route path="errors" element={<AdminErrorLogs />} />
+                        <Route path="features" element={<AdminFeatureFlags />} />
+                        <Route path="settings" element={<AdminSettings />} />
+                        <Route path="" element={<Navigate to="dashboard" replace />} />
+                      </Route>
 
-  {/* Protected Dashboard Routes */}
-        <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-          <Route index element={<Navigate to="/dashboard/overview" replace />} />
-          <Route path="overview" element={<Overview />} />
-          <Route path="agents" element={<Agents />} />
-          <Route path="agents/:slug" element={<AgentDetail />} />
-          <Route path="traces" element={<Traces />} />
-          <Route path="traces/:id" element={<TraceDetail />} />
-          <Route path="audit" element={<AuditLog />} />
-          <Route path="compliance" element={<Compliance />} />
-          <Route path="policies" element={<Policies />} />
-          <Route path="reviews" element={<Reviews />} />
-          <Route path="api-keys" element={<ProtectedRoute requireUser><ApiKeys /></ProtectedRoute>} />
-          <Route path="settings" element={<ProtectedRoute requireUser><Settings /></ProtectedRoute>} />
-          <Route path="integrations" element={<ProtectedRoute requireUser><Integrations /></ProtectedRoute>} />
-          <Route path="webhooks" element={<ProtectedRoute requireUser><Webhooks /></ProtectedRoute>} />
-          <Route path="admin" element={<ProtectedRoute requireAdmin requireUser><Admin /></ProtectedRoute>} />
-        </Route>
-      </Routes>
-      </Suspense>
-      </ErrorBoundary>
-      </PremiumGateProvider>
-      </ToastProvider>
-      </FeatureFlagProvider>
-      </AuthProvider>
-    </BrowserRouter>
+                      {/* Catch old /admin/* paths — redirect away to not expose anything */}
+                      <Route path="/admin/*" element={<Navigate to="/" replace />} />
+
+                      {/* Protected Dashboard */}
+                      <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+                        <Route index element={<Navigate to="/dashboard/overview" replace />} />
+                        <Route path="overview" element={<Overview />} />
+                        <Route path="agents" element={<Agents />} />
+                        <Route path="agents/:slug" element={<AgentDetail />} />
+                        <Route path="traces" element={<Traces />} />
+                        <Route path="traces/:id" element={<TraceDetail />} />
+                        <Route path="audit" element={<AuditLog />} />
+                        <Route path="compliance" element={<Compliance />} />
+                        <Route path="policies" element={<Policies />} />
+                        <Route path="reviews" element={<Reviews />} />
+                        <Route path="api-keys" element={<ProtectedRoute requireUser><ApiKeys /></ProtectedRoute>} />
+                        <Route path="settings" element={<ProtectedRoute requireUser><Settings /></ProtectedRoute>} />
+                        <Route path="integrations" element={<ProtectedRoute requireUser><Integrations /></ProtectedRoute>} />
+                        <Route path="webhooks" element={<ProtectedRoute requireUser><Webhooks /></ProtectedRoute>} />
+                        <Route path="admin" element={<ProtectedRoute requireAdmin requireUser><Admin /></ProtectedRoute>} />
+                      </Route>
+                    </Routes>
+                  </Suspense>
+                </ErrorBoundary>
+              </PremiumGateProvider>
+            </ToastProvider>
+          </FeatureFlagProvider>
+        </AuthProvider>
+      </BrowserRouter>
     </HelmetProvider>
   );
 }
 
 export default App;
+    
