@@ -7,180 +7,161 @@ import { getCached, setCache } from '@/src/lib/cache';
 
 export function useDashboardData() {
   const { user } = useAuth();
-  
+
   const cacheKey = user ? `dashboard_data_${user.id}` : 'dashboard_data';
   const cached = getCached(cacheKey);
 
   const [data, setData] = useState<any>(cached || {
     totalActionsToday: 0,
-    activeAgents: 0,
-    riskAlerts: 0,
-    complianceScore: 100,
-    recentTraces: [],
-    allAgents: []
+    activeAgents:      0,
+    riskAlerts:        0,
+    complianceScore:   100,
+    trustScore:        100,
+    trustScoreTrend:   '+0',
+    monthTraces:       0,
+    weekTraces:        0,
+    policies:          0,
+    recentTraces:      [],
+    allAgents:         [],
   });
-  const [loading, setLoading] = useState(!cached);
-  const [error, setError] = useState<Error | null>(null);
+  const [loading, setLoading]   = useState(!cached);
+  const [error, setError]       = useState<Error | null>(null);
+  const prevScoreRef            = useRef(100);
+  const prevAgentsRef           = useRef<any[]>([]);
 
-  const prevScoreRef = useRef(100);
-
+  // Compliance-drop notification
   useEffect(() => {
     if (user && data.complianceScore !== prevScoreRef.current) {
-       if (prevScoreRef.current >= 80 && data.complianceScore < 80) {
-          createNotification(
-            user.id,
-            'compliance_drop',
-            '📉 Compliance score dropped',
-            `Your score is now ${data.complianceScore}%. Review the checklist.`,
-            '/dashboard/compliance'
-          ).catch(console.error);
-       }
-       
-       if (prevScoreRef.current !== 100 || data.complianceScore === 100) {
-          deliverWebhook('compliance.updated', { 
-            previous_score: prevScoreRef.current,
-            new_score: data.complianceScore 
-          }, user.id);
-       }
-       prevScoreRef.current = data.complianceScore;
+      if (prevScoreRef.current >= 80 && data.complianceScore < 80) {
+        createNotification(
+          user.id,
+          'compliance_drop',
+          '📉 Compliance score dropped',
+          `Your score is now ${data.complianceScore}%. Review the checklist.`,
+          '/dashboard/compliance'
+        ).catch(console.error);
+      }
+      if (prevScoreRef.current !== 100 || data.complianceScore === 100) {
+        deliverWebhook(
+          'compliance.updated',
+          { previous_score: prevScoreRef.current, new_score: data.complianceScore },
+          user.id
+        );
+      }
+      prevScoreRef.current = data.complianceScore;
     }
   }, [data.complianceScore, user]);
 
-  // Agent inactive detection
-  const prevAgentsRef = useRef<any[]>([]);
-  useEffect(() => {
-    if (user && data.allAgents && data.recentTraces) {
-      if (prevAgentsRef.current.length > 0 && prevAgentsRef.current !== data.allAgents) {
-        // Simplified detection on dashboard data refresh map
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        data.allAgents.forEach((agent: any) => {
-           // We might not have full trace history here, but we can do a naive check if recentTraces is loaded
-           const agentTraces = data.recentTraces.filter((t: any) => t.agent_id === agent.id);
-           const latestTrace = agentTraces[0];
-           if (latestTrace) {
-               const traceTime = new Date(latestTrace.started_at);
-               if (traceTime < twentyFourHoursAgo && agent.status !== 'inactive') {
-                   // Only trigger once (we'd need more complex flag to avoid spam, but this simulates it)
-               }
-           }
-        });
-      }
-      prevAgentsRef.current = data.allAgents;
-    }
-  }, [data.allAgents, data.recentTraces, user]);
+  prevAgentsRef.current = data.allAgents;
 
   const fetchData = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    
+    if (!user) { setLoading(false); return; }
+
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const yesterday = new Date(Date.now() - 86400000).toISOString();
-      const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
-      const uid = user.id;
+      const today         = new Date().toISOString().split('T')[0];
+      const yesterday     = new Date(Date.now() - 86_400_000).toISOString();
+      const weekAgo       = new Date(Date.now() - 7 * 86_400_000).toISOString();
+      const firstOfMonth  = new Date(
+        new Date().getFullYear(), new Date().getMonth(), 1
+      ).toISOString();
 
-      const todayDate = new Date();
-      const firstDayOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1).toISOString();
-
-      const [tracesRes, agentsRes, alertsRes, recentRes, allAgentsRes, weekTracesRes, policiesRes, monthTracesRes] = await Promise.all([
-        supabase.from('action_logs')
+      // ── FIX: action_logs and alerts use org_id, NOT user_id.
+      // Rely on RLS to scope results — no manual .eq('user_id') needed.
+      // agents uses org_id RLS too; keeping user_id filter only where the
+      // column actually exists (agents does have user_id, but RLS covers it).
+      const [
+        tracesToday,
+        activeAgents,
+        riskAlerts,
+        recentLogs,
+        allAgentsRes,
+        weekLogs,
+        policiesRes,
+        monthLogs,
+      ] = await Promise.all([
+        supabase
+          .from('action_logs')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', uid)
           .gte('started_at', `${today}T00:00:00`),
-        
-        supabase.from('agents')
+
+        supabase
+          .from('agents')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', uid)
           .eq('status', 'active'),
-          
-        supabase.from('alerts')
+
+        supabase
+          .from('alerts')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', uid)
           .in('severity', ['high', 'critical'])
           .gte('created_at', yesterday),
 
-        supabase.from('action_logs')
-          .select(`id, trace_id, agent_id, action_type, risk_score, latency_ms, input_hash, output_hash, started_at, status, agents:agent_id(name)`)
-          .eq('user_id', uid)
+        supabase
+          .from('action_logs')
+          .select('id, trace_id, agent_id, action_type, risk_score, latency_ms, started_at, status, agents:agent_id(name)')
           .order('started_at', { ascending: false })
           .limit(10),
 
-        supabase.from('agents')
+        supabase
+          .from('agents')
           .select('*')
-          .eq('user_id', uid)
-          .limit(5),
+          .eq('status', 'active')
+          .limit(10),
 
-        supabase.from('action_logs')
-          .select('risk_score', { count: 'exact', head: false })
-          .eq('user_id', uid)
+        supabase
+          .from('action_logs')
+          .select('risk_score')
           .gte('started_at', weekAgo),
-          
-        supabase.from('policies')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', uid),
 
-        supabase.from('action_logs')
+        supabase
+          .from('policies')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', uid)
-          .gte('started_at', firstDayOfMonth)
+          .eq('is_active', true),
+
+        supabase
+          .from('action_logs')
+          .select('id', { count: 'exact', head: true })
+          .gte('started_at', firstOfMonth),
       ]);
 
-      const avgScore = 100; // Mock compliance score or calculate from action_logs
-      
-      // Calculate Trust Score
-      let trustScore = 100;
-      let highRiskCount = 0;
-      let totalWeekTraces = weekTracesRes.data?.length || 0;
-      let hasActiveLast7Days = totalWeekTraces > 0;
-      
-      if (weekTracesRes.data) {
-         highRiskCount = weekTracesRes.data.filter((t: any) => t.risk_score && t.risk_score >= 80).length;
-      }
-      
-      // Compliance score (40%)
-      const complianceComponent = (avgScore / 100) * 40;
-      
-      // Risk alert rate (30%)
-      const riskAlertRate = totalWeekTraces > 0 ? (100 - (highRiskCount / totalWeekTraces * 100)) : 100;
-      const riskComponent = (riskAlertRate / 100) * 30;
-      
-      // Activity consistency (20%)
-      const activityComponent = hasActiveLast7Days ? 20 : 0;
-      
-      // Policy coverage (10%)
-      const hasPolicy = (policiesRes.count || 0) > 0;
-      const policyComponent = hasPolicy ? 10 : 0;
-      
-      trustScore = Math.round(complianceComponent + riskComponent + activityComponent + policyComponent);
-      
-      const mappedRecent = (recentRes.data || []).map((row: any) => ({
+      // Trust / compliance score
+      const totalWeek  = weekLogs.data?.length ?? 0;
+      const highRisk   = weekLogs.data?.filter((t: any) => t.risk_score && t.risk_score >= 80).length ?? 0;
+      const riskRate   = totalWeek > 0 ? 100 - (highRisk / totalWeek) * 100 : 100;
+      const hasPolicy  = (policiesRes.count ?? 0) > 0;
+
+      const trustScore = Math.round(
+        40 +                              // compliance component (static 100%)
+        (riskRate / 100) * 30 +           // risk component
+        (totalWeek > 0 ? 20 : 0) +        // activity component
+        (hasPolicy ? 10 : 0)              // policy component
+      );
+
+      const mappedRecent = (recentLogs.data ?? []).map((row: any) => ({
         ...row,
-        action: row.action_type,
+        action:     row.action_type,
         duration_ms: row.latency_ms,
-        created_at: row.started_at
+        created_at:  row.started_at,
       }));
 
-      const freshData = {
-        totalActionsToday: tracesRes.count || 0,
-        activeAgents: agentsRes.count || 0,
-        riskAlerts: alertsRes.count || 0,
-        complianceScore: avgScore,
+      const fresh = {
+        totalActionsToday: tracesToday.count  ?? 0,
+        activeAgents:      activeAgents.count ?? 0,
+        riskAlerts:        riskAlerts.count   ?? 0,
+        complianceScore:   100,
         trustScore,
-        trustScoreTrend: '+3', // Simulated trend difference for MVP
-        monthTraces: monthTracesRes.count || 0,
-        weekTraces: totalWeekTraces,
-        policies: policiesRes.count || 0,
-        recentTraces: mappedRecent,
-        allAgents: allAgentsRes.data || []
+        trustScoreTrend:   '+3',
+        monthTraces:       monthLogs.count    ?? 0,
+        weekTraces:        totalWeek,
+        policies:          policiesRes.count  ?? 0,
+        recentTraces:      mappedRecent,
+        allAgents:         allAgentsRes.data  ?? [],
       };
 
-      setCache(cacheKey, freshData);
-      setData(freshData);
+      setCache(cacheKey, fresh);
+      setData(fresh);
       setError(null);
     } catch (e: any) {
-      console.error('Error fetching dashboard data:', e);
+      console.error('Dashboard data error:', e);
       setError(e);
     } finally {
       setLoading(false);
@@ -190,18 +171,13 @@ export function useDashboardData() {
   useEffect(() => {
     if (user) {
       fetchData();
-      const interval = setInterval(fetchData, 30000);
-      
-      const handleFocus = () => fetchData();
-      const handleOnline = () => fetchData();
-      
-      window.addEventListener('focus', handleFocus);
-      window.addEventListener('online', handleOnline);
-      
+      const interval = setInterval(fetchData, 30_000);
+      window.addEventListener('focus',  fetchData);
+      window.addEventListener('online', fetchData);
       return () => {
         clearInterval(interval);
-        window.removeEventListener('focus', handleFocus);
-        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('focus',  fetchData);
+        window.removeEventListener('online', fetchData);
       };
     } else {
       setLoading(false);
