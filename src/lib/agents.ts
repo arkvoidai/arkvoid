@@ -12,8 +12,20 @@ export interface CreateAgentInput {
   status?: string;
 }
 
-// Polls up to 6× (total ≈ 10 s) waiting for the DB trigger
-// to finish creating the user_profiles row after OAuth signup.
+// Valid agent_type values — must match agents_agent_type_check constraint
+const VALID_AGENT_TYPES = new Set([
+  'assistant', 'worker', 'supervisor', 'tool',
+  'custom', 'customer_service', 'financial',
+  'healthcare', 'enterprise', 'document_processor',
+]);
+
+function resolveAgentType(type?: string): string {
+  if (type && VALID_AGENT_TYPES.has(type)) return type;
+  return 'assistant'; // DB default
+}
+
+// Polls up to 6× (≈10 s) for the DB trigger to finish
+// creating user_profiles after OAuth signup.
 export async function getUserOrgId(userId: string): Promise<string> {
   if (!userId) throw new Error('You must be signed in to create an agent.');
 
@@ -37,7 +49,7 @@ export async function getUserOrgId(userId: string): Promise<string> {
   }
 
   throw new Error(
-    'Your workspace is still being created. Please wait 5 seconds and click "Set Up My Workspace" again.'
+    'Your workspace is still being set up. Please wait 5 seconds and try again.'
   );
 }
 
@@ -60,7 +72,11 @@ export async function isAgentSlugAvailable(userId: string, slug: string): Promis
 
 function isDuplicateSlugError(err: unknown): boolean {
   const msg = toSafeErrorMessage(err).toLowerCase();
-  return msg.includes('duplicate') || msg.includes('unique') || msg.includes('agents_org_id_slug');
+  return (
+    msg.includes('duplicate') ||
+    msg.includes('unique') ||
+    msg.includes('agents_org_id_slug')
+  );
 }
 
 export async function createAgentForUser(input: CreateAgentInput) {
@@ -72,6 +88,7 @@ export async function createAgentForUser(input: CreateAgentInput) {
   const baseSlug = createSlug(input.slug || name);
   if (!baseSlug) throw new Error('Enter a valid agent name.');
 
+  const agentType = resolveAgentType(input.agentType);
   let lastError: unknown = null;
 
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -82,15 +99,15 @@ export async function createAgentForUser(input: CreateAgentInput) {
       supabase
         .from('agents')
         .insert({
-          // NOTE: agents table has NO user_id column — only these fields:
-          org_id:      orgId,
-          created_by:  input.userId,
+          user_id:     input.userId,   // FK → auth.users.id (required for RLS)
+          org_id:      orgId,          // FK → organizations.id
+          created_by:  input.userId,   // FK → user_profiles.id (same UUID)
           name,
           slug,
-          agent_type:  input.agentType  || 'custom',
+          agent_type:  agentType,
           description: input.description?.trim() || null,
-          metadata:    input.metadata   || {},
-          status:      input.status     || 'active',
+          metadata:    input.metadata || {},
+          status:      input.status   || 'active',
         })
         .select()
         .single(),
