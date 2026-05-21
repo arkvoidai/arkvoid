@@ -15,22 +15,60 @@ export interface CreateAgentInput {
 export async function getUserOrgId(userId: string): Promise<string> {
   if (!userId) throw new Error('You must be signed in to create an agent.');
 
-  const { data, error } = await withTimeout(
-    supabase
-      .from('user_profiles')
-      .select('org_id')
-      .eq('id', userId)
-      .maybeSingle(),
-    10_000,
-    'Profile lookup timed out. Please retry.'
-  );
+  // FIX: Race condition — after Google/GitHub OAuth, Supabase redirects the user
+  // to the dashboard immediately, but the DB trigger that creates user_profiles
+  // may not have run yet. Poll up to 5× (≈8 s total) before giving up.
+  const POLL_DELAYS_MS = [0, 1000, 1500, 2000, 2500];
 
-  if (error) throw error;
-  if (!data?.org_id) {
-    throw new Error('Your workspace profile is still initializing. Refresh once, then try again.');
+  for (let attempt = 0; attempt < POLL_DELAYS_MS.length; attempt++) {
+    if (POLL_DELAYS_MS[attempt] > 0) {
+      await new Promise(r => setTimeout(r, POLL_DELAYS_MS[attempt]));
+    }
+
+    const { data, error } = await withTimeout(
+      supabase
+        .from('user_profiles')
+        .select('org_id')
+        .eq('id', userId)
+        .maybeSingle(),
+      10_000,
+      'Profile lookup timed out. Please retry.'
+    );
+
+    if (error) throw error;
+    if (data?.org_id) return data.org_id;
+
+    // Last attempt: the trigger never fired (or doesn't exist).
+    // Bootstrap the profile row ourselves so the user can proceed.
+    if (attempt === POLL_DELAYS_MS.length - 1) {
+      const newOrgId = crypto.randomUUID();
+
+      const { data: upserted, error: upsertError } = await withTimeout(
+        supabase
+          .from('user_profiles')
+          .upsert(
+            { id: userId, org_id: newOrgId },
+            { onConflict: 'id', ignoreDuplicates: false }
+          )
+          .select('org_id')
+          .single(),
+        10_000,
+        'Profile creation timed out. Please retry.'
+      );
+
+      // If upsert succeeded, use the returned org_id (might differ from
+      // newOrgId if a concurrent insert won the race).
+      if (!upsertError && upserted?.org_id) return upserted.org_id;
+
+      // upsert failed (likely RLS). Give a clear actionable message.
+      throw new Error(
+        'Unable to initialize your workspace. Please sign out and sign back in — this usually fixes it.'
+      );
+    }
   }
 
-  return data.org_id;
+  // TypeScript requires a return path here; the loop above always returns or throws.
+  throw new Error('Unable to initialize your workspace. Please sign out and sign back in.');
 }
 
 export async function isAgentSlugAvailable(userId: string, slug: string): Promise<boolean> {
