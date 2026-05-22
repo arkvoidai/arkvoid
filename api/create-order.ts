@@ -38,7 +38,7 @@ export default async function handler(req: any, res: any) {
   const user = await requireAuth(req);
   if (!user) { res.status(401).json({ error: 'Unauthorized — please sign in.' }); return; }
 
-  const keyId     = process.env.RAZORPAY_KEY_ID || process.env.VITE_RAZORPAY_KEY_ID || '';
+  const keyId     = process.env.VITE_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID || '';
   const keySecret = process.env.RAZORPAY_KEY_SECRET || '';
 
   if (!keyId || !keySecret) {
@@ -47,18 +47,19 @@ export default async function handler(req: any, res: any) {
   }
 
   const { plan, billing_cycle } = req.body || {};
+
   if (!plan || !PLAN_PRICES[plan]) {
     res.status(400).json({ error: `Invalid plan "${plan}". Valid values: PRO, TEAM, ENTERPRISE.` });
     return;
   }
 
-  const prices     = PLAN_PRICES[plan];
-  const amountUsd  = billing_cycle === 'annual' ? prices.annual : prices.monthly;
-  const USD_TO_INR = parseFloat(process.env.VITE_USD_TO_INR || '95.93');
+  const prices        = PLAN_PRICES[plan];
+  const amountUsd     = billing_cycle === 'annual' ? prices.annual : prices.monthly;
+  const USD_TO_INR    = parseFloat(process.env.VITE_USD_TO_INR || '95.93');
   const amountInPaise = Math.round(amountUsd * USD_TO_INR * 100);
 
   try {
-    // ── Direct Razorpay REST API call (no SDK, works on Node 20) ──
+    // Direct Razorpay REST API — no SDK, works on Node 20
     const credentials = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
     const rzpRes = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
@@ -82,22 +83,20 @@ export default async function handler(req: any, res: any) {
 
     if (!rzpRes.ok) {
       const errText = await rzpRes.text();
-      console.error('Razorpay API error:', errText);
-      res.status(502).json({ error: 'Failed to create order' });
+      console.error('Razorpay error:', errText);
+      res.status(502).json({ error: 'Failed to create payment order.' });
       return;
     }
 
     const order = await rzpRes.json();
-
     res.status(200).json({
-      order_id:          order.id,
-      amount:            order.amount,
-      currency:          'INR',
-      key_id:            keyId,
+      order_id:           order.id,
+      amount:             order.amount,
+      currency:           'INR',
       display_amount_usd: amountUsd,
     });
   } catch (e: any) {
     console.error('create-order error:', e);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: e?.message || 'Failed to create payment order.' });
   }
 }
