@@ -190,7 +190,7 @@ export function Settings() {
         throw new Error(errData.error || 'Failed to create order');
       }
 
-      const { order_id, amount, currency, display_amount_usd } = await response.json();
+      const { order_id, amount, currency, billing_cycle: confirmedCycle, display_amount_usd } = await response.json();
 
       const planConfig = PLANS.find((p) => p.key === planKey);
       const displayUsd = display_amount_usd || (billingCycle === 'annual' ? planConfig?.annualTotal : planConfig?.monthlyUsd) || 0;
@@ -214,7 +214,7 @@ export function Settings() {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${freshToken}`,
               },
-              body: JSON.stringify({ ...response, plan: planKey }),
+              body: JSON.stringify({ ...response, plan: planKey, billing_cycle: confirmedCycle || billingCycle }),
             });
             const verifyData = await verifyRes.json();
             if (verifyData.success) {
