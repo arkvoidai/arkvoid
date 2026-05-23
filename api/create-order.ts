@@ -6,7 +6,9 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 function getSupabase() {
   if (!supabaseUrl || !supabaseServiceKey) return null;
-  return createClient(supabaseUrl, supabaseServiceKey);
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 }
 
 async function requireAuth(req: any): Promise<{ id: string; email: string } | null> {
@@ -31,7 +33,6 @@ export default async function handler(req: any, res: any) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return; }
 
@@ -47,19 +48,18 @@ export default async function handler(req: any, res: any) {
   }
 
   const { plan, billing_cycle } = req.body || {};
+  const cycle = billing_cycle === 'annual' ? 'annual' : 'monthly';
 
   if (!plan || !PLAN_PRICES[plan]) {
-    res.status(400).json({ error: `Invalid plan "${plan}". Valid values: PRO, TEAM, ENTERPRISE.` });
+    res.status(400).json({ error: `Invalid plan "${plan}". Valid: PRO, TEAM, ENTERPRISE.` });
     return;
   }
 
-  const prices        = PLAN_PRICES[plan];
-  const amountUsd     = billing_cycle === 'annual' ? prices.annual : prices.monthly;
+  const amountUsd     = PLAN_PRICES[plan][cycle];
   const USD_TO_INR    = parseFloat(process.env.VITE_USD_TO_INR || '95.93');
   const amountInPaise = Math.round(amountUsd * USD_TO_INR * 100);
 
   try {
-    // Direct Razorpay REST API — no SDK, works on Node 20
     const credentials = Buffer.from(`${keyId}:${keySecret}`).toString('base64');
     const rzpRes = await fetch('https://api.razorpay.com/v1/orders', {
       method: 'POST',
@@ -75,7 +75,7 @@ export default async function handler(req: any, res: any) {
           user_id:       user.id,
           user_email:    user.email,
           plan,
-          billing_cycle: billing_cycle || 'monthly',
+          billing_cycle: cycle,
           amount_usd:    String(amountUsd),
         },
       }),
@@ -83,7 +83,7 @@ export default async function handler(req: any, res: any) {
 
     if (!rzpRes.ok) {
       const errText = await rzpRes.text();
-      console.error('Razorpay error:', errText);
+      console.error('[create-order] Razorpay error:', errText);
       res.status(502).json({ error: 'Failed to create payment order.' });
       return;
     }
@@ -93,10 +93,11 @@ export default async function handler(req: any, res: any) {
       order_id:           order.id,
       amount:             order.amount,
       currency:           'INR',
+      billing_cycle:      cycle,           // ← passed back so verify-payment can record it
       display_amount_usd: amountUsd,
     });
   } catch (e: any) {
-    console.error('create-order error:', e);
+    console.error('[create-order] error:', e?.message);
     res.status(500).json({ error: e?.message || 'Failed to create payment order.' });
   }
 }
