@@ -1,5 +1,6 @@
 // api/create-order.ts
 import { createClient } from '@supabase/supabase-js';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -11,7 +12,7 @@ function getSupabase() {
   });
 }
 
-async function requireAuth(req: any): Promise<{ id: string; email: string } | null> {
+async function requireAuth(req: VercelRequest): Promise<{ id: string; email: string } | null> {
   const authHeader = req.headers.authorization;
   if (!authHeader || authHeader === 'Bearer undefined' || authHeader === 'Bearer null') return null;
   const token = authHeader.split(' ')[1];
@@ -29,8 +30,13 @@ const PLAN_PRICES: Record<string, { monthly: number; annual: number }> = {
   ENTERPRISE: { monthly: 999, annual: 9999 },
 };
 
-export default async function handler(req: any, res: any) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const allowedOrigins = ['https://arkvoid.cherazen.com', 'http://localhost:3000', 'http://localhost:5173'];
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  res.setHeader('Vary', 'Origin');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }

@@ -18,6 +18,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       icon,
       iconPosition = "left",
       disabled,
+      type,
       children,
       ...props
     },
@@ -34,8 +35,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary: "bg-[var(--accent-amber)] text-[var(--text-inverse)] hover:bg-[var(--accent-amber-hover)] shadow-[0_0_0_0_var(--accent-amber-border)] hover:shadow-[0_0_0_2px_var(--accent-amber-border)]",
-      secondary: "bg-[#1A1A1A] text-white border border-[#262626] hover:bg-[#262626]",
-      ghost: "bg-transparent text-white hover:bg-[#1A1A1A]",
+      secondary: "bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border-default)] hover:bg-[var(--border-default)]",
+      ghost: "bg-transparent text-[var(--text-primary)] hover:bg-[var(--bg-hover)]",
       danger: "bg-transparent text-[var(--status-danger)] hover:bg-[var(--status-danger)] hover:text-white",
       outline: "bg-transparent border border-[var(--accent-amber)] text-[var(--accent-amber)] hover:bg-[var(--accent-amber-dim)]",
     };
@@ -51,7 +52,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     return (
-      <button ref={ref} className={getClasses()} disabled={disabled || loading} {...props}>
+      <button ref={ref} type={type ?? "button"} className={getClasses()} disabled={disabled || loading} {...props}>
         {loading ? (
           <div className="flex items-center justify-center">
             <svg
