@@ -4,6 +4,7 @@
 
 import { Mistral } from '@mistralai/mistralai';
 import { createClient } from '@supabase/supabase-js';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -13,7 +14,22 @@ function getSupabase() {
   return createClient(supabaseUrl, supabaseServiceKey);
 }
 
-async function requireAuth(req: any): Promise<{ id: string; email: string } | null> {
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 20;
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId) ?? { count: 0, resetAt: now + 60_000 };
+  if (now > entry.resetAt) {
+    entry.count = 0;
+    entry.resetAt = now + 60_000;
+  }
+  entry.count += 1;
+  rateLimitMap.set(userId, entry);
+  return entry.count <= RATE_LIMIT;
+}
+
+async function requireAuth(req: VercelRequest): Promise<{ id: string; email: string } | null> {
   const authHeader = req.headers.authorization;
   if (!authHeader || authHeader === 'Bearer undefined') return null;
   const token = authHeader.split(' ')[1];
@@ -31,7 +47,7 @@ async function requireAuth(req: any): Promise<{ id: string; email: string } | nu
   return { id: user.id, email: user.email || '' };
 }
 
-export default async function handler(req: any, res: any) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -49,6 +65,10 @@ export default async function handler(req: any, res: any) {
   const user = await requireAuth(req);
   if (!user) {
     res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  if (user.id !== 'guest' && !checkRateLimit(user.id)) {
+    res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
     return;
   }
 
