@@ -11,7 +11,7 @@ export function Logo({ className, variant = 'full' }: LogoProps) {
 
   return (
     <a 
-      href="https://arkvoid.cherazen.com" 
+      href="https://arkvoid.com" 
       className={cn("flex items-center hover:opacity-80 transition-opacity", className)}
       target="_blank" 
       rel="noopener noreferrer"

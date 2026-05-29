@@ -6,12 +6,12 @@
  * Or use directly: copy this file
  */
 
-const ARKVOID_BASE_URL = 'https://arkvoid.cherazen.com/api/v1'
+const ARKVOID_BASE_URL = 'https://arkvoid.com/api/v1'
 
 class ArkvoidClient {
   constructor({ apiKey, agent = null, silent = false } = {}) {
     if (!apiKey?.startsWith('ARK_')) {
-      throw new Error('API key must start with ARK_. Get yours at arkvoid.cherazen.com')
+      throw new Error('API key must start with ARK_. Get yours at arkvoid.com')
     }
     this.apiKey = apiKey
     this.defaultAgent = agent
