@@ -47,7 +47,7 @@ export async function enrichUserData(user: any) {
          method: 'POST',
          headers: { 'Content-Type': 'application/json', Authorization: `Bearer SIMULATED` },
          body: JSON.stringify({
-            from: 'leads@arkvoid.com',
+            from: 'leads@arkvoid.cherazen.com',
             to: 'heyarkvoid@gmail.com',
             subject: `High Value Lead: ${companyInfo.name}`,
             text: `New signup from ${email}.\nCompany: ${companyInfo.name}\nEmployees: ${companyInfo.employees}\nIndustry: ${companyInfo.industry}`

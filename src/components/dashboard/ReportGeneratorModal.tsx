@@ -173,7 +173,7 @@ export function ReportGeneratorModal({ open, onClose, reportType }: ReportGenera
                
                <div className="mt-16 pt-8 border-t border-gray-300 text-center text-xs text-gray-500 print:mt-12 print:pt-4">
                  Verified by ARKVOID Cryptographic Audit Trail<br />
-                 arkvoid.com | Report ID: {reportToken}
+                 arkvoid.cherazen.com | Report ID: {reportToken}
                </div>
             </div>
             

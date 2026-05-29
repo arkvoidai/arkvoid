@@ -166,9 +166,9 @@ export function ApiKeys() {
       return (
         <div className="p-4">
           <div className="mb-4 text-[13px] text-[var(--text-secondary)]">
-            <span className="font-semibold text-white">Endpoint:</span> <code className="bg-[#111] px-1.5 py-0.5 rounded border border-[#222]">POST https://arkvoid.com/api/v1/traces</code>
+            <span className="font-semibold text-white">Endpoint:</span> <code className="bg-[#111] px-1.5 py-0.5 rounded border border-[#222]">POST https://arkvoid.cherazen.com/api/v1/traces</code>
           </div>
-          <CodeBlock label="Request" code={`curl -X POST https://arkvoid.com/api/v1/traces \\
+          <CodeBlock label="Request" code={`curl -X POST https://arkvoid.cherazen.com/api/v1/traces \\
   -H "Authorization: Bearer ARK_your_key_here" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -190,13 +190,13 @@ export function ApiKeys() {
       return (
         <div className="p-4">
           <CodeBlock label="Installation" code={`pip install requests  # only dependency
-# Then download arkvoid.py from arkvoid.com/sdk`} />
+# Then download arkvoid.py from arkvoid.cherazen.com/sdk`} />
           
           <CodeBlock label="3-Line Quickstart" code={`from arkvoid import ArkvoidClient
 
 client = ArkvoidClient(api_key="ARK_your_key_here", agent="my-agent")
 client.trace(action="document_analysis", risk_level="low")
-# Done! Check your dashboard at arkvoid.com`} />
+# Done! Check your dashboard at arkvoid.cherazen.com`} />
 
           <CodeBlock label="Decorator Usage" code={`import os
 from arkvoid import trace
@@ -293,7 +293,7 @@ jobs:
     steps:
       - name: Send deployment trace to ARKVOID
         run: |
-          curl -X POST https://arkvoid.com/api/v1/traces \\
+          curl -X POST https://arkvoid.cherazen.com/api/v1/traces \\
             -H "Authorization: Bearer \${{ secrets.ARKVOID_API_KEY }}" \\
             -H "Content-Type: application/json" \\
             -d '{

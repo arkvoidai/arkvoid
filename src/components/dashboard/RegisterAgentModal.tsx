@@ -142,7 +142,7 @@ export function RegisterAgentModal({ open, onClose, onSuccess, uid }: RegisterAg
     const code = `# Python
 import requests
 
-requests.post("https://arkvoid.com/api/v1/traces", 
+requests.post("https://arkvoid.cherazen.com/api/v1/traces", 
   headers={"Authorization": "Bearer YOUR_KEY"},
   json={"agent_slug": "${slug}", "action": "test", "risk_level": "low"}
 )`;
@@ -176,7 +176,7 @@ requests.post("https://arkvoid.com/api/v1/traces",
 <span className="text-[var(--text-tertiary)]"># Python</span>
 <br/><span className="text-[#F472B6]">import</span> requests
 <br/>
-<br/>requests.post(<span className="text-[#34D399]">"https://arkvoid.com/api/v1/traces"</span>, 
+<br/>requests.post(<span className="text-[#34D399]">"https://arkvoid.cherazen.com/api/v1/traces"</span>, 
 <br/>  headers=&#123;<span className="text-[#34D399]">"Authorization"</span>: <span className="text-[#34D399]">"Bearer YOUR_KEY"</span>&#125;,
 <br/>  json=&#123;<span className="text-[#34D399]">"agent_slug"</span>: <span className="text-[#34D399]">"{slug}"</span>, <span className="text-[#34D399]">"action"</span>: <span className="text-[#34D399]">"test"</span>, <span className="text-[#34D399]">"risk_level"</span>: <span className="text-[#34D399]">"low"</span>&#125;)
 </pre>

@@ -372,7 +372,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          curl -s -X POST https://arkvoid.com/api/v1/traces \\
+          curl -s -X POST https://arkvoid.cherazen.com/api/v1/traces \\
             -H "Authorization: Bearer \${{ secrets.ARKVOID_API_KEY }}" \\
             -H "Content-Type: application/json" \\
             -d '{"agent_slug": "${slug}", "action": "deployment"}'`}
