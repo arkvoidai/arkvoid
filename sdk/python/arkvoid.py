@@ -1,7 +1,7 @@
 """
 ARKVOID Python SDK
 Monitor and govern your AI agents with cryptographic audit trails.
-Domain: arkvoid.com
+Domain: arkvoid.cherazen.com
 
 Install: pip install requests
 Usage: from arkvoid import ArkvoidClient, trace
@@ -37,7 +37,7 @@ class ArkvoidClient:
         )
     """
     
-    BASE_URL = "https://arkvoid.com/api/v1"
+    BASE_URL = "https://arkvoid.cherazen.com/api/v1"
     
     def __init__(self, api_key: str, agent: Optional[str] = None, 
                  silent: bool = False):
@@ -48,7 +48,7 @@ class ArkvoidClient:
             silent: If True, suppress all errors (fire-and-forget mode)
         """
         if not api_key.startswith("ARK_"):
-            raise ValueError("API key must start with ARK_. Get yours at arkvoid.com")
+            raise ValueError("API key must start with ARK_. Get yours at arkvoid.cherazen.com")
         
         self.api_key = api_key
         self.default_agent = agent

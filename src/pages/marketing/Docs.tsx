@@ -183,7 +183,7 @@ export function Docs() {
             <span className="flex items-center justify-center w-6 h-6 rounded-full bg-white/10 text-xs font-bold">1</span>
             Create your account
           </h2>
-          <p className="text-gray-300 mb-4 font-normal">Sign up for free at arkvoid.com. No credit card.</p>
+          <p className="text-gray-300 mb-4 font-normal">Sign up for free at arkvoid.cherazen.com. No credit card.</p>
           <Link to="/auth/signup" className="inline-flex items-center gap-2 px-4 py-2 bg-[#E8D5B0] text-black font-semibold rounded-lg hover:bg-white transition-colors">
             Start Free &rarr;
           </Link>
@@ -292,7 +292,7 @@ export function Docs() {
               {activeTraceTab === 'python' && `from arkvoid import ArkvoidClient
 
 client = ArkvoidClient(
-    api_key="ARK_your_key_here",  # from arkvoid.com
+    api_key="ARK_your_key_here",  # from arkvoid.cherazen.com
     agent="my-chatbot",           # your agent slug
 )
 
@@ -328,7 +328,7 @@ const result = await client.trace({
 console.log(result.traceId)  // ark_a1b2c3d4...
 console.log(result.status)   // verified`}
 
-              {activeTraceTab === 'curl' && `curl -X POST https://arkvoid.com/api/v1/traces \\
+              {activeTraceTab === 'curl' && `curl -X POST https://arkvoid.cherazen.com/api/v1/traces \\
   -H "Authorization: Bearer ARK_your_key_here" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -492,7 +492,7 @@ console.log(result.status)   // verified`}
       <h1 className="text-[32px] md:text-[40px] font-bold tracking-tight mb-8">REST API Reference</h1>
 
       <div className="bg-[#111] p-6 rounded-xl border border-[#E8D5B0]/30 font-mono text-lg text-[#E8D5B0] mb-8 overflow-x-auto text-center">
-        https://arkvoid.com/api/v1
+        https://arkvoid.cherazen.com/api/v1
       </div>
 
       <h2 className="text-[20px] font-bold tracking-tight mb-4">Authentication</h2>
@@ -500,7 +500,7 @@ console.log(result.status)   // verified`}
       <div className="font-mono text-sm text-gray-300 bg-[#111] p-4 rounded-xl border border-white/10 mb-4 overflow-x-auto">
         Authorization: Bearer ARK_your_key_here
       </div>
-      <p className="text-sm text-gray-400 mb-12">Get your key at: arkvoid.com/dashboard/api-keys</p>
+      <p className="text-sm text-gray-400 mb-12">Get your key at: arkvoid.cherazen.com/dashboard/api-keys</p>
 
       <h2 className="text-[20px] font-bold tracking-tight mb-4">Endpoints</h2>
       <div className="overflow-x-auto mb-12 border border-white/10 rounded-xl bg-[#111]">

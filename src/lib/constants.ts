@@ -1,4 +1,4 @@
-export const SITE_URL = "https://arkvoid.com";
+export const SITE_URL = "https://arkvoid.cherazen.com";
 export const APP_NAME = "ARKVOID";
 export const COMPANY = "ARKVOID Inc.";
 export const FOUNDER = "Manish Talukdar";

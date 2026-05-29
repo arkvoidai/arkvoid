@@ -41,7 +41,7 @@ export function Blog() {
               "@context": "https://schema.org",
               "@type": "Blog",
               "name": "ARKVOID Blog",
-              "url": "https://arkvoid.com/blog"
+              "url": "https://arkvoid.cherazen.com/blog"
             }
           `}
         </script>
