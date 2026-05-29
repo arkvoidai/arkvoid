@@ -12,7 +12,7 @@ export function StatusPage() {
 
   // Simulated live service status
   const services = [
-    { name: 'API (arkvoid.cherazen.com/api/v1/traces)', status: 'Operational', type: 'operational' },
+    { name: 'API (arkvoid.com/api/v1/traces)', status: 'Operational', type: 'operational' },
     { name: 'Database', status: 'Operational', type: 'operational' },
     { name: 'Authentication', status: 'Operational', type: 'operational' },
     { name: 'Dashboard', status: 'Operational', type: 'operational' },

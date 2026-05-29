@@ -36,7 +36,7 @@ export function OGImage() {
           </p>
 
           <div className="absolute bottom-12 left-16 text-zinc-500 text-[24px] tracking-wide font-mono">
-            arkvoid.cherazen.com
+            arkvoid.com
           </div>
         </div>
 
