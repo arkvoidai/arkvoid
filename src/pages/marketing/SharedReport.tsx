@@ -115,7 +115,7 @@ export function SharedReport() {
            
            <div className="mt-16 pt-8 border-t border-gray-300 text-center text-xs text-gray-500 font-medium">
              Verified by ARKVOID Cryptographic Audit Trail<br />
-             arkvoid.cherazen.com | Report ID: {report.token}
+             arkvoid.com | Report ID: {report.token}
            </div>
         </div>
         

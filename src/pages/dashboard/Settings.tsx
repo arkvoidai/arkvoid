@@ -202,7 +202,7 @@ export function Settings() {
         currency,
         name: 'ARKVOID',
         description: `${planKey} Plan â€” $${displayUsd} USD (billed in INR)`,
-        image: 'https://arkvoid.cherazen.com/logo.png',
+        image: 'https://arkvoid.com/logo.png',
         handler: async (response: any) => {
           try {
             const freshSession = await supabase.auth.getSession();

@@ -114,7 +114,7 @@ export function Privacy() {
             <section id="introduction" className="mb-16">
               <h2 className="text-[22px] font-bold text-white mt-12 mb-4">1. Introduction</h2>
               <p className="text-[15px] text-[#A1A1A6] leading-[1.75] mb-4">
-                ARKVOID Inc. ("ARKVOID", "we", "our", "us") is a Delaware corporation operating an AI governance and audit trail infrastructure platform. This Privacy Policy explains how we collect, use, disclose, and protect personal information when you use our services at arkvoid.cherazen.com and any related APIs, SDKs, or products.
+                ARKVOID Inc. ("ARKVOID", "we", "our", "us") is a Delaware corporation operating an AI governance and audit trail infrastructure platform. This Privacy Policy explains how we collect, use, disclose, and protect personal information when you use our services at arkvoid.com and any related APIs, SDKs, or products.
               </p>
               <p className="text-[15px] text-[#A1A1A6] leading-[1.75] mb-4">This policy complies with:</p>
               <ul className="text-[15px] text-[#A1A1A6] leading-[1.75] mb-4 list-disc pl-5">

@@ -231,7 +231,7 @@ export function OnboardingModal({ isOpen, onClose, userName }: { isOpen: boolean
                 
                 <label className="block text-[12px] font-medium text-[var(--text-secondary)] mb-1.5">Example usage</label>
                 <div className="bg-[#0D0D14] p-4 rounded-[8px] font-mono text-[11px] sm:text-[12px] text-gray-300 overflow-x-auto border border-white/5 whitespace-pre">
-<span className="text-pink-400">curl</span> -X POST https://arkvoid.cherazen.com/api/v1/traces \
+<span className="text-pink-400">curl</span> -X POST https://arkvoid.com/api/v1/traces \
   -H <span className="text-green-300">"Authorization: Bearer {apiKey.substring(0, 10)}..."</span> \
   -H <span className="text-green-300">"Content-Type: application/json"</span> \
   -d <span className="text-yellow-200">'{'{'}
