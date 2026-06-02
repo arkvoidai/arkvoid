@@ -170,7 +170,7 @@ serve(async (req) => {
           used: limitCheck.used,
           limit: limitCheck.limit,
           upgrade_url:
-            "https://arkvoid.cherazen.com/dashboard/settings?tab=billing",
+            "https://arkvoid.com/dashboard/settings?tab=billing",
         }),
         {
           status: 429,
@@ -248,7 +248,7 @@ serve(async (req) => {
     if (agentError || !agentData) {
       return new Response(
         JSON.stringify({
-          error: `Agent "${agent_slug}" not found. Register it at https://arkvoid.cherazen.com/dashboard/agents`,
+          error: `Agent "${agent_slug}" not found. Register it at https://arkvoid.com/dashboard/agents`,
         }),
         {
           status: 404,

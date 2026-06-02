@@ -34,7 +34,7 @@ const PLAN_LIMITS: Record<string, { agents: number; traces: number; retention_da
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const allowedOrigins = ['https://arkvoid.cherazen.com', 'http://localhost:3000', 'http://localhost:5173'];
+  const allowedOrigins = ['https://arkvoid.com', 'http://localhost:3000', 'http://localhost:5173'];
   const origin = req.headers.origin;
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);

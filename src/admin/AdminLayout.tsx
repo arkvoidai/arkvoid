@@ -68,7 +68,7 @@ export function AdminLayout() {
   useEffect(() => {
     // Ping site every 60s
     const checkSite = () => {
-      fetch('https://arkvoid.cherazen.com', { method: 'HEAD', mode: 'no-cors' })
+      fetch('https://arkvoid.com', { method: 'HEAD', mode: 'no-cors' })
         .then(() => setSiteStatus('live'))
         .catch(() => setSiteStatus('down'));
     };
@@ -211,7 +211,7 @@ export function AdminLayout() {
              <div className="flex items-center gap-1.5" title="Ping status to marketing site">
                 <div className={`w-2 h-2 rounded-full ${siteStatus === 'live' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                 <span className="text-[11px] text-[#888] hidden sm:block">
-                  arkvoid.cherazen.com — {siteStatus === 'live' ? 'Live' : 'Down'}
+                  arkvoid.com — {siteStatus === 'live' ? 'Live' : 'Down'}
                 </span>
              </div>
 

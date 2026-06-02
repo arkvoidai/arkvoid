@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://arkvoid.cherazen.com/</loc><priority>1.0</priority></url>
-  <url><loc>https://arkvoid.cherazen.com/features</loc><priority>0.9</priority></url>
-  <url><loc>https://arkvoid.cherazen.com/pricing</loc><priority>0.9</priority></url>
-  <url><loc>https://arkvoid.cherazen.com/how-it-works</loc><priority>0.8</priority></url>
-  <url><loc>https://arkvoid.cherazen.com/docs</loc><priority>0.8</priority></url>
-  <url><loc>https://arkvoid.cherazen.com/blog</loc><priority>0.7</priority></url>
-  <url><loc>https://arkvoid.cherazen.com/security</loc><priority>0.6</priority></url>
-  <url><loc>https://arkvoid.cherazen.com/about</loc><priority>0.5</priority></url>
-  <url><loc>https://arkvoid.cherazen.com/contact</loc><priority>0.5</priority></url>
+  <url><loc>https://arkvoid.com/</loc><priority>1.0</priority></url>
+  <url><loc>https://arkvoid.com/features</loc><priority>0.9</priority></url>
+  <url><loc>https://arkvoid.com/pricing</loc><priority>0.9</priority></url>
+  <url><loc>https://arkvoid.com/how-it-works</loc><priority>0.8</priority></url>
+  <url><loc>https://arkvoid.com/docs</loc><priority>0.8</priority></url>
+  <url><loc>https://arkvoid.com/blog</loc><priority>0.7</priority></url>
+  <url><loc>https://arkvoid.com/security</loc><priority>0.6</priority></url>
+  <url><loc>https://arkvoid.com/about</loc><priority>0.5</priority></url>
+  <url><loc>https://arkvoid.com/contact</loc><priority>0.5</priority></url>
 </urlset>
